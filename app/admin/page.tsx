@@ -163,6 +163,39 @@ export default function AdminPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // 1. Auto-refresh on window focus (switching tabs/windows)
+    const handleFocus = () => loadAllData();
+    window.addEventListener("focus", handleFocus);
+
+    // 2. Custom event listeners for real-time local sync
+    const handleDataEvent = () => loadAllData();
+    window.addEventListener("kb_products_updated", handleDataEvent);
+    window.addEventListener("kb_properties_updated", handleDataEvent);
+    window.addEventListener("kb_books_updated", handleDataEvent);
+    window.addEventListener("kb_courses_updated", handleDataEvent);
+    window.addEventListener("kb_categories_updated", handleDataEvent);
+    window.addEventListener("kb_settings_updated", handleDataEvent);
+
+    // 3. Periodic cloud poll every 15s to pull other admins' live changes
+    const interval = setInterval(() => {
+      loadAllData();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("kb_products_updated", handleDataEvent);
+      window.removeEventListener("kb_properties_updated", handleDataEvent);
+      window.removeEventListener("kb_books_updated", handleDataEvent);
+      window.removeEventListener("kb_courses_updated", handleDataEvent);
+      window.removeEventListener("kb_categories_updated", handleDataEvent);
+      window.removeEventListener("kb_settings_updated", handleDataEvent);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated]);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (pin === "admin123" || pin === "786") {
