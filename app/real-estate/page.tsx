@@ -88,7 +88,7 @@ export default function RealEstatePage() {
                 {featuredDeal.price_display}
               </div>
               <Link
-                href={`/real-estate/property/${featuredDeal.slug}`}
+                href={`/real-estate/property/?slug=${featuredDeal.slug}`}
                 className="mt-3 w-full bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
               >
                 <span>View Property Details</span>

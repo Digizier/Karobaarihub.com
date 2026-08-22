@@ -188,7 +188,7 @@ export default function CartPage() {
                   </div>
                   <div className="min-w-0">
                     <Link
-                      href={`/product/${item.slug}`}
+                      href={`/product/?slug=${item.slug}`}
                       className="text-xs sm:text-sm font-semibold text-karobaari-darkGray hover:text-karobaari-maroon line-clamp-1 block truncate"
                     >
                       {item.title}

@@ -99,7 +99,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             <span>WhatsApp</span>
           </a>
           <Link
-            href={`/real-estate/property/${property.slug}`}
+            href={`/real-estate/property/?slug=${property.slug}`}
             className="flex items-center justify-center gap-1 bg-karobaari-darkMaroon hover:bg-karobaari-maroon text-white text-[11px] sm:text-xs font-bold py-2 rounded-lg transition-colors shadow-xs"
           >
             <span>Details</span>

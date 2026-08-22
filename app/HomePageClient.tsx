@@ -74,10 +74,24 @@ export default function HomePageClient(props: HomePageClientProps) {
     };
 
     refreshData();
+    window.addEventListener("kb_banners_updated", refreshData);
+    window.addEventListener("kb_properties_updated", refreshData);
+    window.addEventListener("kb_products_updated", refreshData);
+    window.addEventListener("kb_books_updated", refreshData);
+    window.addEventListener("kb_courses_updated", refreshData);
     window.addEventListener("kb_categories_updated", refreshData);
+    window.addEventListener("kb_vouchers_updated", refreshData);
+    window.addEventListener("focus", refreshData);
     window.addEventListener("storage", refreshData);
     return () => {
+      window.removeEventListener("kb_banners_updated", refreshData);
+      window.removeEventListener("kb_properties_updated", refreshData);
+      window.removeEventListener("kb_products_updated", refreshData);
+      window.removeEventListener("kb_books_updated", refreshData);
+      window.removeEventListener("kb_courses_updated", refreshData);
       window.removeEventListener("kb_categories_updated", refreshData);
+      window.removeEventListener("kb_vouchers_updated", refreshData);
+      window.removeEventListener("focus", refreshData);
       window.removeEventListener("storage", refreshData);
     };
   }, []);

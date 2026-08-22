@@ -84,7 +84,7 @@ export default function FlashSale({ products }: FlashSaleProps) {
                   </div>
                 )}
 
-                <Link href={`/product/${product.slug}`} className="block relative aspect-square w-full bg-gray-100 overflow-hidden">
+                <Link href={`/product/?slug=${product.slug}`} className="block relative aspect-square w-full bg-gray-100 overflow-hidden">
                   <Image
                     src={product.thumbnail_url || "/assets/cloth-stand-1.jpeg"}
                     alt={product.name || "Product"}
@@ -95,7 +95,7 @@ export default function FlashSale({ products }: FlashSaleProps) {
                 </Link>
 
                 <div className="p-2 sm:p-3 flex-1 flex flex-col justify-between">
-                  <Link href={`/product/${product.slug}`}>
+                  <Link href={`/product/?slug=${product.slug}`}>
                     <h4 className="text-[11px] sm:text-xs font-medium text-karobaari-darkGray line-clamp-2 h-7 sm:h-8 hover:text-karobaari-maroon leading-tight mb-1">
                       {product.name}
                     </h4>

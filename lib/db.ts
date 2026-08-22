@@ -291,7 +291,7 @@ export async function getProperties(params: PropertyFilterParams = {}): Promise<
   try {
     let query = supabase
       .from("properties")
-      .select("id, title, slug, property_type, status, area_marla, price, price_pkr, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active", { count: "exact" })
+      .select("id, title, slug, property_type, status, area_marla, price, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active", { count: "exact" })
       .eq("is_active", true);
 
     if (selectedType) query = query.eq("property_type", selectedType);
@@ -1124,36 +1124,48 @@ export async function adminSaveBanner(banner: Partial<Banner>): Promise<Banner> 
 
   if (banner.id && current.some((b) => b.id === banner.id)) {
     updatedB = { ...current.find((b) => b.id === banner.id)!, ...banner } as Banner;
-    const updated = current.map((b) => (b.id === banner.id ? updatedB : b));
-    setLocal(STORAGE_KEYS.BANNERS, updated);
   } else {
     updatedB = {
-      id: banner.id || `banner_${Date.now()}`,
+      id: isValidUUID(banner.id) ? banner.id! : generateUUID(),
       title: banner.title || "Featured Promotion",
       subtitle: banner.subtitle || "Smart Shopping in Pakistan",
       image_url: banner.image_url || "/assets/ecommerce-banner-1.jpeg",
       link_url: banner.link_url || "/shop",
       cta_text: banner.cta_text || "Shop Deals",
-      sort_order: banner.sort_order ?? 1,
+      sort_order: banner.sort_order ?? (current.length + 1),
       is_active: banner.is_active ?? true,
       ...banner,
     } as Banner;
-    setLocal(STORAGE_KEYS.BANNERS, [updatedB, ...current]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("banners").upsert({
-        id: updatedB.id,
+      const payload: Record<string, any> = {
         title: updatedB.title,
-        subtitle: updatedB.subtitle,
+        subtitle: updatedB.subtitle || "",
         image_url: updatedB.image_url,
-        link_url: updatedB.link_url,
-        cta_text: updatedB.cta_text,
+        link_url: updatedB.link_url || "/shop",
+        cta_text: updatedB.cta_text || "Shop Deals",
         sort_order: updatedB.sort_order,
         is_active: updatedB.is_active,
-      });
+      };
+      if (isValidUUID(updatedB.id)) {
+        payload.id = updatedB.id;
+      }
+      const { data, error } = await supabase.from("banners").upsert(payload).select("id").single();
+      if (!error && data?.id) {
+        updatedB.id = data.id;
+      }
     } catch {}
+  }
+
+  const updatedList = current.some((b) => b.id === updatedB.id)
+    ? current.map((b) => (b.id === updatedB.id ? updatedB : b))
+    : [updatedB, ...current];
+  setLocal(STORAGE_KEYS.BANNERS, updatedList);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_banners_updated"));
   }
   return updatedB;
 }
@@ -1166,6 +1178,10 @@ export async function adminDeleteBanner(id: string): Promise<boolean> {
     try {
       await supabase.from("banners").delete().eq("id", id);
     } catch {}
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_banners_updated"));
   }
   return true;
 }
