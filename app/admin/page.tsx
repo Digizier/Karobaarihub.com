@@ -26,6 +26,7 @@ import {
   Upload,
   X,
   Eye,
+  EyeOff,
   DollarSign,
   PhoneCall,
   ArrowLeft,
@@ -96,6 +97,7 @@ import { initialSiteSettings } from "@/lib/mockData";
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [pinError, setPinError] = useState("");
 
   const [activeTab, setActiveTab] = useState<
@@ -198,13 +200,13 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === "admin123" || pin === "786") {
+    if (pin === "karobaari1234@#%" || pin === "admin123" || pin === "786") {
       setIsAuthenticated(true);
       sessionStorage.setItem("kb_admin_session", "true");
       setPinError("");
       loadAllData();
     } else {
-      setPinError("Invalid Admin PIN. (Default PIN: admin123)");
+      setPinError("Invalid Admin Password. Access Denied.");
     }
   };
 
@@ -328,16 +330,27 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                Enter Master Security PIN
+                Enter Master Security Password
               </label>
-              <input
-                type="password"
-                autoFocus
-                placeholder="Enter PIN (Default: admin123)"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="w-full bg-[#0F172A] border border-gray-600 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-karobaari-gold font-mono"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoFocus
+                  placeholder="Enter Security Password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  className="w-full bg-[#0F172A] border border-gray-600 rounded-xl px-4 py-3 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-karobaari-gold font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1 transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {pinError && <p className="text-xs text-red-400 mt-1.5 font-medium">{pinError}</p>}
             </div>
 
