@@ -217,29 +217,29 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const [ov, prods, props, bks, crs, ords, inqs, cats, vchs, bnrs, shp, sett] = await Promise.all([
-        getAdminOverview(),
-        getProducts({ limit: 100 }),
-        getProperties({ limit: 100 }),
-        getDigitalBooks(),
-        getCourses(),
-        adminGetOrders(),
-        adminGetInquiries(),
-        getCategories(),
-        getVouchers(),
-        getBanners(),
-        adminGetShippingConfig(),
-        getSiteSettings(),
+        getAdminOverview().catch(() => null),
+        getProducts({ limit: 100 }).catch(() => ({ products: [], total: 0 })),
+        getProperties({ limit: 100 }).catch(() => ({ properties: [], total: 0 })),
+        getDigitalBooks().catch(() => []),
+        getCourses().catch(() => []),
+        adminGetOrders().catch(() => []),
+        adminGetInquiries().catch(() => []),
+        getCategories().catch(() => []),
+        getVouchers().catch(() => []),
+        getBanners().catch(() => []),
+        adminGetShippingConfig().catch(() => DEFAULT_SHIPPING_CONFIG),
+        getSiteSettings().catch(() => initialSiteSettings),
       ]);
       setOverview(ov);
-      setProducts(prods.products);
-      setProperties(props.properties);
-      setBooks(bks);
-      setCourses(crs);
-      setOrders(ords);
-      setInquiries(inqs);
-      setCategories(cats);
-      setVouchers(vchs);
-      setBanners(bnrs);
+      setProducts(prods?.products || []);
+      setProperties(props?.properties || []);
+      setBooks(bks || []);
+      setCourses(crs || []);
+      setOrders(ords || []);
+      setInquiries(inqs || []);
+      setCategories(cats || []);
+      setVouchers(vchs || []);
+      setBanners(bnrs || []);
       if (shp) setShippingConfig(shp);
       if (sett) setSiteSettings(sett);
     } catch (err) {
@@ -643,13 +643,13 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {products
-                        .filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      {(products || [])
+                        .filter((p) => (p?.name || "").toLowerCase().includes((searchQuery || "").toLowerCase()))
                         .map((p) => (
                           <tr key={p.id} className="hover:bg-gray-50">
                             <td className="py-3 px-4 flex items-center gap-3">
                               <div className="relative w-10 h-10 rounded-lg bg-gray-100 overflow-hidden border shrink-0">
-                                <Image src={p.thumbnail_url} alt={p.name} fill unoptimized className="object-cover" />
+                                <Image src={p.thumbnail_url || "/assets/cloth-stand-1.jpeg"} alt={p.name || "Product"} fill unoptimized className="object-cover" />
                               </div>
                               <div className="min-w-0">
                                 <span className="font-bold text-gray-900 line-clamp-1 block">{p.name}</span>
@@ -740,11 +740,11 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {properties.map((prop) => (
+                {(properties || []).map((prop) => (
                   <div key={prop.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs flex flex-col justify-between">
                     <div>
                       <div className="relative aspect-[16/10] bg-gray-900">
-                        <Image src={prop.thumbnail_url} alt={prop.title} fill unoptimized className="object-cover" />
+                        <Image src={prop.thumbnail_url || "/assets/shahpur-house.jpeg"} alt={prop.title || "Property"} fill unoptimized className="object-cover" />
                         <div className="absolute top-2 left-2 flex gap-1">
                           <span className="bg-karobaari-maroon text-white text-[9px] font-bold px-2 py-0.5 rounded">{prop.property_type}</span>
                           <span className="bg-karobaari-gold text-gray-900 text-[9px] font-bold px-2 py-0.5 rounded">{prop.area_marla} Marla</span>
@@ -797,11 +797,11 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {books.map((b) => (
+                {(books || []).map((b) => (
                   <div key={b.id} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs flex items-center gap-3.5 justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative w-12 h-16 bg-gray-100 rounded-lg overflow-hidden border shrink-0">
-                        <Image src={b.cover_url} alt={b.title} fill unoptimized className="object-cover" />
+                        <Image src={b.cover_url || "/assets/ebook-cover.jpeg"} alt={b.title || "Book"} fill unoptimized className="object-cover" />
                       </div>
                       <div>
                         <span className="text-[9px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.2 rounded">{b.category}</span>
@@ -848,11 +848,11 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {courses.map((c) => (
+                {(courses || []).map((c) => (
                   <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="relative w-20 aspect-video bg-gray-900 rounded-lg overflow-hidden shrink-0 border">
-                        <Image src={c.thumbnail_url} alt={c.title} fill unoptimized className="object-cover" />
+                        <Image src={c.thumbnail_url || "/assets/course-thumb.jpeg"} alt={c.title || "Course"} fill unoptimized className="object-cover" />
                       </div>
                       <div>
                         <span className="text-[9px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.2 rounded">{c.level}</span>
@@ -1189,10 +1189,10 @@ export default function AdminPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {banners.map((b) => (
+                {(banners || []).map((b) => (
                   <div key={b.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs flex flex-col justify-between">
                     <div className="relative aspect-[21/9] bg-gray-900">
-                      <Image src={b.image_url} alt={b.title || "Banner"} fill unoptimized className="object-cover" />
+                      <Image src={b.image_url || "/assets/ecommerce-banner-1.jpeg"} alt={b.title || "Banner"} fill unoptimized className="object-cover" />
                     </div>
                     <div className="p-3.5 flex items-center justify-between">
                       <div>

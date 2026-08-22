@@ -82,7 +82,7 @@ export default function BookDetailClient({ book: initialBook, slug: propSlug }: 
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-8 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-8">
           <div className="md:col-span-4 flex justify-center">
             <div className="relative aspect-[3/4] w-48 sm:w-full rounded-xl overflow-hidden shadow border border-gray-200">
-              <Image src={book.cover_url} alt={book.title} fill unoptimized className="object-cover" />
+              <Image src={book.cover_url || "/assets/ebook-cover.jpeg"} alt={book.title || "Book"} fill unoptimized className="object-cover" />
             </div>
           </div>
 

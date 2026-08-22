@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -66,7 +66,7 @@ export default function Hero({ banners, vouchers }: HeroProps) {
               }`}
             >
               <Image
-                src={banner.image_url}
+                src={banner.image_url || "/assets/ecommerce-banner-1.jpeg"}
                 alt={banner.title || "Promotion"}
                 fill
                 priority={index === 0}

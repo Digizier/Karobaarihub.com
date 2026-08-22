@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -86,8 +86,8 @@ export default function FlashSale({ products }: FlashSaleProps) {
 
                 <Link href={`/product/${product.slug}`} className="block relative aspect-square w-full bg-gray-100 overflow-hidden">
                   <Image
-                    src={product.thumbnail_url}
-                    alt={product.name}
+                    src={product.thumbnail_url || "/assets/cloth-stand-1.jpeg"}
+                    alt={product.name || "Product"}
                     fill
                     unoptimized
                     className="object-cover group-hover:scale-105 transition-transform duration-300"

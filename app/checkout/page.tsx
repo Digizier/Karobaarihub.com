@@ -487,7 +487,7 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex items-center justify-between gap-2 pb-1.5 border-b border-gray-100">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="relative w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
-                        <Image src={item.thumbnail_url} alt={item.title} fill unoptimized className="object-cover" />
+                        <Image src={item.thumbnail_url || "/assets/cloth-stand-1.jpeg"} alt={item.title || "Item"} fill unoptimized className="object-cover" />
                       </div>
                       <div className="min-w-0">
                         <span className="font-semibold text-karobaari-darkGray truncate block">{item.title}</span>

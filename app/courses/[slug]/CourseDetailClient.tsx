@@ -81,7 +81,7 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
 
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-8 shadow-xs space-y-4 sm:space-y-6">
           <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full">
-            <Image src={course.thumbnail_url} alt={course.title} fill unoptimized className="object-cover" />
+            <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover" />
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 text-karobaari-maroon flex items-center justify-center shadow-xl">
                 <PlayCircle className="w-7 h-7 sm:w-8 sm:h-8" />

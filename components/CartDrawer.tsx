@@ -249,8 +249,8 @@ export default function CartDrawer() {
                 {/* Thumbnail */}
                 <div className="relative w-16 h-16 rounded-xl bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0">
                   <Image
-                    src={item.thumbnail_url}
-                    alt={item.title}
+                    src={item.thumbnail_url || "/assets/cloth-stand-1.jpeg"}
+                    alt={item.title || "Cart item"}
                     fill
                     unoptimized
                     className="object-cover"

@@ -20,8 +20,8 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         {/* Property Thumbnail */}
         <div className="relative aspect-[16/10] bg-karobaari-darkGray overflow-hidden w-full">
           <Image
-            src={property.thumbnail_url}
-            alt={property.title}
+            src={property.thumbnail_url || "/assets/shahpur-house.jpeg"}
+            alt={property.title || "Property"}
             fill
             unoptimized
             className="object-cover group-hover:scale-105 transition-transform duration-500"

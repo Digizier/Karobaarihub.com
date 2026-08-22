@@ -155,17 +155,17 @@ export default function PropertyDetailClient({ property: initialProperty, slug: 
           <div className="mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             <div className="lg:col-span-8 space-y-2">
               <div className="relative aspect-[16/10] bg-karobaari-darkGray rounded-xl overflow-hidden shadow-inner border border-gray-200 w-full">
-                <Image src={selectedImg} alt={property.title} fill unoptimized className="object-cover" />
+                <Image src={selectedImg || "/assets/shahpur-house.jpeg"} alt={property.title || "Property"} fill unoptimized className="object-cover" />
               </div>
               <div className="flex gap-1.5 overflow-x-auto pb-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedImg(property.thumbnail_url)}
+                  onClick={() => setSelectedImg(property.thumbnail_url || "/assets/shahpur-house.jpeg")}
                   className={`relative w-16 h-11 sm:w-20 sm:h-14 rounded-lg overflow-hidden border-2 flex-shrink-0 ${
                     selectedImg === property.thumbnail_url ? "border-karobaari-maroon" : "border-gray-200"
                   }`}
                 >
-                  <Image src={property.thumbnail_url} alt="Thumb" fill unoptimized className="object-cover" />
+                  <Image src={property.thumbnail_url || "/assets/shahpur-house.jpeg"} alt="Thumb" fill unoptimized className="object-cover" />
                 </button>
                 {property.images?.map((img) => (
                   <button
@@ -176,7 +176,7 @@ export default function PropertyDetailClient({ property: initialProperty, slug: 
                       selectedImg === img.public_url ? "border-karobaari-maroon" : "border-gray-200"
                     }`}
                   >
-                    <Image src={img.public_url} alt="Thumb" fill unoptimized className="object-cover" />
+                    <Image src={img.public_url || "/assets/shahpur-house.jpeg"} alt="Thumb" fill unoptimized className="object-cover" />
                   </button>
                 ))}
               </div>

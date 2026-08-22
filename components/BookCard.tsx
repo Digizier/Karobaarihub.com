@@ -13,8 +13,8 @@ export function BookCard({ book }: { book: DigitalBook }) {
       <div>
         <div className="relative aspect-[3/4] bg-karobaari-darkGray overflow-hidden w-full">
           <Image
-            src={book.cover_url}
-            alt={book.title}
+            src={book.cover_url || "/assets/ebook-cover.jpeg"}
+            alt={book.title || "Book"}
             fill
             unoptimized
             className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -42,11 +42,11 @@ export function BookCard({ book }: { book: DigitalBook }) {
         <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
           <div className="flex items-baseline gap-1">
             <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
-              {currentPrice === 0 ? "FREE" : `Rs. ${currentPrice.toLocaleString()}`}
+              {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
             </span>
             {book.sale_price && (
               <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
-                Rs. {book.price.toLocaleString()}
+                Rs. {(book.price || 0).toLocaleString()}
               </span>
             )}
           </div>
@@ -71,8 +71,8 @@ export function CourseCard({ course }: { course: Course }) {
       <div>
         <div className="relative aspect-video bg-karobaari-darkGray overflow-hidden w-full">
           <Image
-            src={course.thumbnail_url}
-            alt={course.title}
+            src={course.thumbnail_url || "/assets/course-thumb.jpeg"}
+            alt={course.title || "Course"}
             fill
             unoptimized
             className="object-cover group-hover:scale-105 transition-transform duration-300"
