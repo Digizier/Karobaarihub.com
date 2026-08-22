@@ -37,40 +37,44 @@ import {
   Testimonial,
 } from "@/lib/types";
 
-interface HomePageClientProps {
-  initialBanners: Banner[];
-  initialVouchers: Voucher[];
-  initialCategories: Category[];
-  initialFlashProducts: Product[];
-  initialJustForYouProducts: Product[];
-  initialProperties: Property[];
-  initialBooks: DigitalBook[];
-  initialCourses: Course[];
-  initialTestimonials: Testimonial[];
-}
-
-export default function HomePageClient(props: HomePageClientProps) {
-  const [banners, setBanners] = useState(props.initialBanners);
-  const [vouchers, setVouchers] = useState(props.initialVouchers);
-  const [categories, setCategories] = useState(props.initialCategories);
-  const [flashProducts, setFlashProducts] = useState(props.initialFlashProducts);
-  const [justForYouProducts, setJustForYouProducts] = useState(props.initialJustForYouProducts);
-  const [properties, setProperties] = useState(props.initialProperties);
-  const [books, setBooks] = useState(props.initialBooks);
-  const [courses, setCourses] = useState(props.initialCourses);
-  const [testimonials, setTestimonials] = useState(props.initialTestimonials);
+export default function HomePageClient() {
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [flashProducts, setFlashProducts] = useState<Product[]>([]);
+  const [justForYouProducts, setJustForYouProducts] = useState<Product[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [books, setBooks] = useState<DigitalBook[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const refreshData = () => {
-      getBanners().then((b) => b && b.length > 0 && setBanners(b));
-      getVouchers().then((v) => v && v.length > 0 && setVouchers(v));
-      getCategories().then((c) => c && c.length > 0 && setCategories(c));
-      getProducts({ flashSaleOnly: true, limit: 6 }).then((res) => res && res.products.length > 0 && setFlashProducts(res.products));
-      getProducts({ limit: 12 }).then((res) => res && res.products.length > 0 && setJustForYouProducts(res.products));
-      getProperties({ limit: 6, featuredOnly: false }).then((res) => res && res.properties.length > 0 && setProperties(res.properties));
-      getDigitalBooks().then((b) => b && b.length > 0 && setBooks(b));
-      getCourses().then((c) => c && c.length > 0 && setCourses(c));
-      getTestimonials().then((t) => t && t.length > 0 && setTestimonials(t));
+    const refreshData = async () => {
+      try {
+        const [bnrs, vchs, cats, flash, jfy, props, bks, crs, tests] = await Promise.all([
+          getBanners().catch(() => []),
+          getVouchers().catch(() => []),
+          getCategories().catch(() => []),
+          getProducts({ flashSaleOnly: true, limit: 6 }).catch(() => ({ products: [], total: 0 })),
+          getProducts({ limit: 12 }).catch(() => ({ products: [], total: 0 })),
+          getProperties({ limit: 6, featuredOnly: false }).catch(() => ({ properties: [], total: 0 })),
+          getDigitalBooks().catch(() => []),
+          getCourses().catch(() => []),
+          getTestimonials().catch(() => []),
+        ]);
+        if (bnrs) setBanners(bnrs);
+        if (vchs) setVouchers(vchs);
+        if (cats) setCategories(cats);
+        if (flash?.products) setFlashProducts(flash.products);
+        if (jfy?.products) setJustForYouProducts(jfy.products);
+        if (props?.properties) setProperties(props.properties);
+        if (bks) setBooks(bks);
+        if (crs) setCourses(crs);
+        if (tests) setTestimonials(tests);
+      } finally {
+        setLoading(false);
+      }
     };
 
     refreshData();
@@ -172,11 +176,23 @@ export default function HomePageClient(props: HomePageClientProps) {
           </div>
 
           {/* Properties Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {properties.slice(0, 6).map((property) => (
-              <PropertyCard key={property.id} property={property} />
-            ))}
-          </div>
+          {properties.length === 0 && loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white/10 rounded-2xl p-4 border border-white/10 animate-pulse">
+                  <div className="aspect-[16/10] bg-white/10 rounded-xl mb-4" />
+                  <div className="h-5 bg-white/10 rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-white/10 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {properties.slice(0, 6).map((property) => (
+                <PropertyCard key={property.id} property={property} />
+              ))}
+            </div>
+          )}
 
           {/* Real Estate Trust Box */}
           <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-3.5 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 text-[11px] sm:text-xs text-gray-300">
@@ -212,11 +228,19 @@ export default function HomePageClient(props: HomePageClientProps) {
                 View All &rarr;
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-              {books.slice(0, 2).map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
+            {books.length === 0 && loading ? (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="bg-gray-100 rounded-xl p-3 border border-gray-200 animate-pulse h-48" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                {books.slice(0, 2).map((book) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Online Courses */}
@@ -232,11 +256,19 @@ export default function HomePageClient(props: HomePageClientProps) {
                 View All &rarr;
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-              {courses.slice(0, 2).map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
-            </div>
+            {courses.length === 0 && loading ? (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="bg-gray-100 rounded-xl p-3 border border-gray-200 animate-pulse h-48" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                {courses.slice(0, 2).map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -248,6 +280,7 @@ export default function HomePageClient(props: HomePageClientProps) {
           subtitle="Top trending items, machinery, clothing, and electronics"
           viewAllHref="/shop"
           products={justForYouProducts}
+          loading={loading && justForYouProducts.length === 0}
         />
       </section>
 

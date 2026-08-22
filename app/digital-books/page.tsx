@@ -5,19 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { BookCard } from "@/components/BookCard";
 import { getDigitalBooks } from "@/lib/db";
 import { DigitalBook } from "@/lib/types";
-import { initialDigitalBooks } from "@/lib/mockData";
 import BookDetailClient from "./[slug]/BookDetailClient";
 
 function DigitalBooksContent() {
   const searchParams = useSearchParams();
   const slug = searchParams?.get("slug");
 
-  const [books, setBooks] = useState<DigitalBook[]>(initialDigitalBooks);
+  const [books, setBooks] = useState<DigitalBook[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getDigitalBooks().then((res) => {
-      if (res && res.length > 0) {
+      if (res) {
         setBooks(res);
       }
       setLoading(false);
@@ -43,11 +42,19 @@ function DigitalBooksContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-6">
-          {books.map((b) => (
-            <BookCard key={b.id} book={b} />
-          ))}
-        </div>
+        {books.length === 0 && loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl p-3 border border-gray-200 shadow-xs animate-pulse h-64" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-6">
+            {books.map((b) => (
+              <BookCard key={b.id} book={b} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

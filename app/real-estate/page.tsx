@@ -10,15 +10,14 @@ import {
 import PropertyCard from "@/components/PropertyCard";
 import { getProperties } from "@/lib/db";
 import { Property } from "@/lib/types";
-import { initialProperties } from "@/lib/mockData";
 
 export default function RealEstatePage() {
-  const [properties, setProperties] = useState<Property[]>(initialProperties);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadPropertiesData = () => {
     getProperties({ limit: 24 }).then((res) => {
-      if (res && res.properties && res.properties.length > 0) {
+      if (res && res.properties) {
         setProperties(res.properties);
       }
       setLoading(false);
@@ -35,7 +34,7 @@ export default function RealEstatePage() {
     };
   }, []);
 
-  const featuredDeal = properties.find((p) => p.is_featured) || properties[0] || initialProperties[0];
+  const featuredDeal = properties.find((p) => p.is_featured) || properties[0] || null;
 
   return (
     <div className="bg-gray-50 min-h-screen w-full overflow-hidden">
@@ -148,11 +147,23 @@ export default function RealEstatePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {properties.map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
-        </div>
+        {properties.length === 0 && loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs animate-pulse">
+                <div className="aspect-[16/10] bg-gray-200 rounded-xl mb-4" />
+                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {properties.map((p) => (
+              <PropertyCard key={p.id} property={p} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

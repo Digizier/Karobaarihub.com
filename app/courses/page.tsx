@@ -5,19 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { CourseCard } from "@/components/BookCard";
 import { getCourses } from "@/lib/db";
 import { Course } from "@/lib/types";
-import { initialCourses } from "@/lib/mockData";
 import CourseDetailClient from "./[slug]/CourseDetailClient";
 
 function CoursesContent() {
   const searchParams = useSearchParams();
   const slug = searchParams?.get("slug");
 
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getCourses().then((res) => {
-      if (res && res.length > 0) {
+      if (res) {
         setCourses(res);
       }
       setLoading(false);
@@ -43,11 +42,19 @@ function CoursesContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {courses.map((c) => (
-            <CourseCard key={c.id} course={c} />
-          ))}
-        </div>
+        {courses.length === 0 && loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl p-4 border border-gray-200 shadow-xs animate-pulse h-64" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {courses.map((c) => (
+              <CourseCard key={c.id} course={c} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

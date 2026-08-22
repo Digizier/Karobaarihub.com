@@ -58,7 +58,16 @@ export default function Hero({ banners, vouchers }: HeroProps) {
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         {/* 1. HERO BANNER CAROUSEL WITH SLIDE COUNTER (e.g. 2/15) */}
         <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-md sm:shadow-lg aspect-[16/9] sm:aspect-[24/8] min-h-[170px] max-h-[380px] bg-karobaari-darkGray group w-full">
-          {banners.map((banner, index) => (
+          {banners.length === 0 ? (
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-karobaari-darkGray to-karobaari-darkMaroon flex items-center p-4 sm:p-8 animate-pulse">
+              <div className="space-y-2.5 max-w-md">
+                <div className="h-4 w-24 bg-white/20 rounded-full" />
+                <div className="h-7 sm:h-10 w-3/4 bg-white/20 rounded-xl" />
+                <div className="h-3 sm:h-4 w-1/2 bg-white/20 rounded-lg" />
+              </div>
+            </div>
+          ) : (
+            banners.map((banner, index) => (
             <div
               key={banner.id}
               className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
@@ -94,7 +103,7 @@ export default function Hero({ banners, vouchers }: HeroProps) {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
 
           {/* Carousel Arrows */}
           <button

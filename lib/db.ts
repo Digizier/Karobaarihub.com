@@ -15,13 +15,6 @@ import {
   AdminShippingConfig,
 } from "./types";
 import {
-  initialCategories,
-  initialProducts,
-  initialProperties,
-  initialDigitalBooks,
-  initialCourses,
-  initialBanners,
-  initialVouchers,
   initialTestimonials,
   initialSiteSettings,
 } from "./mockData";
@@ -40,7 +33,23 @@ const STORAGE_KEYS = {
   SETTINGS: "kb_admin_site_settings_v2",
 };
 
-function getLocal<T>(key: string, fallback: T[]): T[] {
+// AUTO-PURGE LEGACY MOCK DATA FROM BROWSER STORAGE ON LOAD
+if (typeof window !== "undefined") {
+  try {
+    const cleaned = sessionStorage.getItem("kb_cleanup_v3");
+    if (!cleaned) {
+      localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+      localStorage.removeItem(STORAGE_KEYS.PROPERTIES);
+      localStorage.removeItem(STORAGE_KEYS.BOOKS);
+      localStorage.removeItem(STORAGE_KEYS.COURSES);
+      localStorage.removeItem(STORAGE_KEYS.BANNERS);
+      localStorage.removeItem(STORAGE_KEYS.VOUCHERS);
+      sessionStorage.setItem("kb_cleanup_v3", "true");
+    }
+  } catch {}
+}
+
+function getLocal<T>(key: string, fallback: T[] = []): T[] {
   if (typeof window === "undefined") return fallback;
   try {
     const saved = localStorage.getItem(key);
@@ -98,23 +107,19 @@ export async function getCategories(): Promise<Category[]> {
     try {
       const { data, error } = await supabase
         .from("categories")
-        .select("id, name, slug, image_url, parent_id, sort_order, is_active")
+        .select("*")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
-      if (!error && data && data.length > 0) {
-        const cats = (data as Category[]).filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
-        setLocal(STORAGE_KEYS.CATEGORIES, cats);
-        return cats;
+      if (!error && data) {
+        return (data as Category[]).filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
       }
     } catch {}
+    return [];
   }
 
   const local = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
-  if (local && local.length > 0) {
-    return local.filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
-  }
-  return initialCategories;
+  return (local || []).filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
 }
 
 export interface ProductFilterParams {
@@ -138,11 +143,6 @@ export function filterLocalProducts(list: Product[], params: ProductFilterParams
     filtered = filtered.filter((p) => {
       if (p.category_slug && p.category_slug.toLowerCase().trim() === targetSlug) return true;
       if (p.category_name && slugify(p.category_name) === targetSlug) return true;
-      if (p.category_id) {
-        const cats = getLocal<Category>(STORAGE_KEYS.CATEGORIES, initialCategories);
-        const matchedCat = cats.find((c) => c.id === p.category_id);
-        if (matchedCat && matchedCat.slug.toLowerCase().trim() === targetSlug) return true;
-      }
       return false;
     });
   }
@@ -190,71 +190,67 @@ export function filterLocalProducts(list: Product[], params: ProductFilterParams
 }
 
 export async function getProducts(params: ProductFilterParams = {}): Promise<{ products: Product[]; total: number }> {
-  const localList = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      let query = supabase
+        .from("products")
+        .select("id, name, slug, price, sale_price, stock, rating, review_count, sales_count, thumbnail_url, category_name, category_slug, brand_name, is_flash_sale, is_featured, is_active, location_tag", { count: "exact" })
+        .eq("is_active", true);
 
-  if (!isSupabaseConfigured() || !supabase) {
-    return filterLocalProducts(localList, params);
+      if (params.categorySlug) query = query.eq("category_slug", params.categorySlug);
+      if (params.flashSaleOnly) query = query.eq("is_flash_sale", true);
+      if (params.featuredOnly) query = query.eq("is_featured", true);
+      if (params.search) query = query.ilike("name", `%${params.search}%`);
+      if (params.minPrice !== undefined && params.minPrice > 0) query = query.gte("price", params.minPrice);
+      if (params.maxPrice !== undefined && params.maxPrice > 0) query = query.lte("price", params.maxPrice);
+
+      if (params.sort === "price_asc") query = query.order("price", { ascending: true });
+      else if (params.sort === "price_desc") query = query.order("price", { ascending: false });
+      else if (params.sort === "top_sales") query = query.order("sales_count", { ascending: false });
+      else query = query.order("created_at", { ascending: false });
+
+      const limit = params.limit || 24;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, count, error } = await query;
+      if (!error && data) {
+        return { products: data as Product[], total: count !== null ? count : data.length };
+      }
+    } catch {}
+    return { products: [], total: 0 };
   }
 
-  try {
-    let query = supabase
-      .from("products")
-      .select("id, name, slug, price, sale_price, stock, rating, review_count, sales_count, thumbnail_url, category_name, category_slug, brand_name, is_flash_sale, is_featured, is_active, location_tag", { count: "exact" })
-      .eq("is_active", true);
-
-    if (params.categorySlug) query = query.eq("category_slug", params.categorySlug);
-    if (params.flashSaleOnly) query = query.eq("is_flash_sale", true);
-    if (params.featuredOnly) query = query.eq("is_featured", true);
-    if (params.search) query = query.ilike("name", `%${params.search}%`);
-    if (params.minPrice !== undefined && params.minPrice > 0) query = query.gte("price", params.minPrice);
-    if (params.maxPrice !== undefined && params.maxPrice > 0) query = query.lte("price", params.maxPrice);
-
-    if (params.sort === "price_asc") query = query.order("price", { ascending: true });
-    else if (params.sort === "price_desc") query = query.order("price", { ascending: false });
-    else if (params.sort === "top_sales") query = query.order("sales_count", { ascending: false });
-    else query = query.order("created_at", { ascending: false });
-
-    const limit = params.limit || 24;
-    const offset = params.offset || 0;
-    query = query.range(offset, offset + limit - 1);
-
-    const { data, count, error } = await query;
-    if (error || !data) {
-      return filterLocalProducts(localList, params);
-    }
-    return { products: data as Product[], total: count !== null ? count : data.length };
-  } catch {
-    return filterLocalProducts(localList, params);
-  }
+  const localList = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
+  return filterLocalProducts(localList, params);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const localList = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
   const clean = slugify(slug);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const filters = [`slug.eq.${slug}`];
+      if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+      if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, variants:product_variants(*), images:product_images(*)")
+        .or(filters.join(","))
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) return data as Product;
+    } catch {}
+    return null;
+  }
+
+  const localList = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
   const localProduct = localList.find(
     (p) => p.slug === slug || slugify(p.slug) === clean || p.id === slug || slugify(p.name) === clean
   );
-
-  if (!isSupabaseConfigured() || !supabase) {
-    return localProduct || null;
-  }
-  try {
-    const filters = [`slug.eq.${slug}`];
-    if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
-    if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
-
-    const { data, error } = await supabase
-      .from("products")
-      .select("*, variants:product_variants(*), images:product_images(*)")
-      .or(filters.join(","))
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !data) return localProduct || null;
-    return data as Product;
-  } catch {
-    return localProduct || null;
-  }
+  return localProduct || null;
 }
 
 export interface PropertyFilterParams {
@@ -270,90 +266,89 @@ export interface PropertyFilterParams {
 }
 
 export async function getProperties(params: PropertyFilterParams = {}): Promise<{ properties: Property[]; total: number }> {
-  const localList = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
   const selectedType = params.propertyType || params.type;
 
-  if (!isSupabaseConfigured() || !supabase) {
-    let filtered = [...localList].filter((p) => p.is_active !== false);
-    if (selectedType) filtered = filtered.filter((p) => p.property_type.toLowerCase() === selectedType.toLowerCase());
-    if (params.minMarla) filtered = filtered.filter((p) => p.area_marla >= params.minMarla!);
-    if (params.maxMarla) filtered = filtered.filter((p) => p.area_marla <= params.maxMarla!);
-    if (params.featuredOnly) filtered = filtered.filter((p) => p.is_featured);
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (p) => p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q)
-      );
-    }
-    return { properties: filtered.slice(0, params.limit || 12), total: filtered.length };
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      let query = supabase
+        .from("properties")
+        .select("id, title, slug, property_type, status, area_marla, price, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active, created_at", { count: "exact" })
+        .eq("is_active", true);
+
+      if (selectedType) query = query.eq("property_type", selectedType);
+      if (params.minMarla) query = query.gte("area_marla", params.minMarla);
+      if (params.maxMarla) query = query.lte("area_marla", params.maxMarla);
+      if (params.featuredOnly) query = query.eq("is_featured", true);
+      if (params.search) query = query.ilike("title", `%${params.search}%`);
+
+      query = query.order("is_featured", { ascending: false }).order("created_at", { ascending: false });
+
+      const limit = params.limit || 12;
+      const offset = params.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data, count, error } = await query;
+      if (!error && data) {
+        return { properties: (data as unknown as Property[]), total: count || data.length };
+      }
+    } catch {}
+    return { properties: [], total: 0 };
   }
 
-  try {
-    let query = supabase
-      .from("properties")
-      .select("id, title, slug, property_type, status, area_marla, price, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active", { count: "exact" })
-      .eq("is_active", true);
-
-    if (selectedType) query = query.eq("property_type", selectedType);
-    if (params.minMarla) query = query.gte("area_marla", params.minMarla);
-    if (params.maxMarla) query = query.lte("area_marla", params.maxMarla);
-    if (params.featuredOnly) query = query.eq("is_featured", true);
-    if (params.search) query = query.ilike("title", `%${params.search}%`);
-
-    query = query.order("is_featured", { ascending: false }).order("created_at", { ascending: false });
-
-    const limit = params.limit || 12;
-    const offset = params.offset || 0;
-    query = query.range(offset, offset + limit - 1);
-
-    const { data, count, error } = await query;
-    if (error || !data || data.length === 0) {
-      return { properties: localList.slice(0, params.limit || 12), total: localList.length };
-    }
-    return { properties: (data as unknown as Property[]), total: count || data.length };
-  } catch {
-    return { properties: localList.slice(0, params.limit || 12), total: localList.length };
+  const localList = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []);
+  let filtered = [...localList].filter((p) => p.is_active !== false);
+  if (selectedType) filtered = filtered.filter((p) => p.property_type.toLowerCase() === selectedType.toLowerCase());
+  if (params.minMarla) filtered = filtered.filter((p) => p.area_marla >= params.minMarla!);
+  if (params.maxMarla) filtered = filtered.filter((p) => p.area_marla <= params.maxMarla!);
+  if (params.featuredOnly) filtered = filtered.filter((p) => p.is_featured);
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    filtered = filtered.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q)
+    );
   }
+  return { properties: filtered.slice(0, params.limit || 12), total: filtered.length };
 }
 
 export async function getPropertyBySlug(slug: string): Promise<Property | null> {
-  const localList = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
   const clean = slugify(slug);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const filters = [`slug.eq.${slug}`];
+      if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+      if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*, images:property_images(*)")
+        .or(filters.join(","))
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) return data as Property;
+    } catch {}
+    return null;
+  }
+
+  const localList = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []);
   const localProperty = localList.find(
     (p) => p.slug === slug || slugify(p.slug) === clean || p.id === slug || slugify(p.title) === clean
   );
-
-  if (!isSupabaseConfigured() || !supabase) return localProperty || null;
-  try {
-    const filters = [`slug.eq.${slug}`];
-    if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
-    if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
-
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*, images:property_images(*)")
-      .or(filters.join(","))
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !data) return localProperty || null;
-    return data as Property;
-  } catch {
-    return localProperty || null;
-  }
+  return localProperty || null;
 }
 
 export async function getDigitalBooks(): Promise<DigitalBook[]> {
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase.from("digital_books").select("*").eq("is_active", true).order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
-        setLocal(STORAGE_KEYS.BOOKS, data as DigitalBook[]);
+      if (!error && data) {
         return data as DigitalBook[];
       }
     } catch {}
+    return [];
   }
-  return getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
+  return getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []);
 }
 
 export async function getDigitalBookBySlug(slug: string): Promise<DigitalBook | null> {
@@ -373,8 +368,9 @@ export async function getDigitalBookBySlug(slug: string): Promise<DigitalBook | 
 
       if (!error && data) return data as DigitalBook;
     } catch {}
+    return null;
   }
-  const localList = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
+  const localList = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []);
   return localList.find((b) => b.slug === slug || slugify(b.slug) === clean || b.id === slug || slugify(b.title) === clean) || null;
 }
 
@@ -382,13 +378,13 @@ export async function getCourses(): Promise<Course[]> {
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase.from("courses").select("*").eq("is_active", true).order("created_at", { ascending: false });
-      if (!error && data && data.length > 0) {
-        setLocal(STORAGE_KEYS.COURSES, data as Course[]);
+      if (!error && data) {
         return data as Course[];
       }
     } catch {}
+    return [];
   }
-  return getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
+  return getLocal<Course>(STORAGE_KEYS.COURSES, []);
 }
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
@@ -408,8 +404,9 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
 
       if (!error && data) return data as Course;
     } catch {}
+    return null;
   }
-  const localList = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
+  const localList = getLocal<Course>(STORAGE_KEYS.COURSES, []);
   return localList.find((c) => c.slug === slug || slugify(c.slug) === clean || c.id === slug || slugify(c.title) === clean) || null;
 }
 
@@ -417,26 +414,26 @@ export async function getBanners(): Promise<Banner[]> {
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase.from("banners").select("*").eq("is_active", true).order("sort_order", { ascending: true });
-      if (!error && data && data.length > 0) {
-        setLocal(STORAGE_KEYS.BANNERS, data as Banner[]);
+      if (!error && data) {
         return data as Banner[];
       }
     } catch {}
+    return [];
   }
-  return getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
+  return getLocal<Banner>(STORAGE_KEYS.BANNERS, []);
 }
 
 export async function getVouchers(): Promise<Voucher[]> {
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase.from("vouchers").select("*").eq("is_active", true);
-      if (!error && data && data.length > 0) {
-        setLocal(STORAGE_KEYS.VOUCHERS, data as Voucher[]);
+      if (!error && data) {
         return data as Voucher[];
       }
     } catch {}
+    return [];
   }
-  return getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
+  return getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, []);
 }
 
 export async function getTestimonials(): Promise<Testimonial[]> {
@@ -575,13 +572,13 @@ export async function getAdminOverview() {
     } catch {}
   }
 
-  if (productsCount === 0) {
-    const products = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
+  if (!isSupabaseConfigured() && productsCount === 0) {
+    const products = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
     productsCount = products.length;
-    lowStock = products.filter((p) => p.stock < 10).length;
-    propertiesCount = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties).length;
-    booksCount = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks).length;
-    coursesCount = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses).length;
+    lowStock = products.filter((p) => (p.stock || 0) < 10).length;
+    propertiesCount = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []).length;
+    booksCount = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []).length;
+    coursesCount = getLocal<Course>(STORAGE_KEYS.COURSES, []).length;
   }
 
   const totalSales = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
@@ -604,7 +601,7 @@ export async function getAdminOverview() {
 
 // PRODUCT CRUD
 export async function adminSaveProduct(product: Partial<Product>): Promise<Product> {
-  const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
+  const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
   let updatedProduct: Product;
   const derivedSlug = slugify(product.slug || product.name || `product-${Date.now()}`);
 
@@ -692,7 +689,7 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
 }
 
 export async function adminDeleteProduct(id: string): Promise<boolean> {
-  const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
+  const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
   const updated = current.filter((p) => p.id !== id);
   setLocal(STORAGE_KEYS.PRODUCTS, updated);
 
@@ -711,7 +708,7 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
 
 // PROPERTY CRUD
 export async function adminSaveProperty(property: Partial<Property>): Promise<Property> {
-  const current = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
+  const current = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []);
   let updatedProperty: Property;
   const derivedSlug = slugify(property.slug || property.title || `property-${Date.now()}`);
 
@@ -793,7 +790,7 @@ export async function adminSaveProperty(property: Partial<Property>): Promise<Pr
 }
 
 export async function adminDeleteProperty(id: string): Promise<boolean> {
-  const current = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
+  const current = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []);
   const updated = current.filter((p) => p.id !== id);
   setLocal(STORAGE_KEYS.PROPERTIES, updated);
 
@@ -807,7 +804,7 @@ export async function adminDeleteProperty(id: string): Promise<boolean> {
 
 // E-BOOKS CRUD
 export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<DigitalBook> {
-  const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
+  const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []);
   let updatedBook: DigitalBook;
   const derivedSlug = slugify(book.slug || book.title || `book-${Date.now()}`);
 
@@ -880,7 +877,7 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
 }
 
 export async function adminDeleteDigitalBook(id: string): Promise<boolean> {
-  const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
+  const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []);
   setLocal(STORAGE_KEYS.BOOKS, current.filter((b) => b.id !== id));
 
   if (isSupabaseConfigured() && supabase) {
@@ -897,7 +894,7 @@ export async function adminDeleteDigitalBook(id: string): Promise<boolean> {
 
 // COURSES CRUD
 export async function adminSaveCourse(course: Partial<Course>): Promise<Course> {
-  const current = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
+  const current = getLocal<Course>(STORAGE_KEYS.COURSES, []);
   let updatedCourse: Course;
   const derivedSlug = slugify(course.slug || course.title || `course-${Date.now()}`);
 
@@ -973,7 +970,7 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
 }
 
 export async function adminDeleteCourse(id: string): Promise<boolean> {
-  const current = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
+  const current = getLocal<Course>(STORAGE_KEYS.COURSES, []);
   setLocal(STORAGE_KEYS.COURSES, current.filter((c) => c.id !== id));
 
   if (isSupabaseConfigured() && supabase) {
@@ -990,8 +987,7 @@ export async function adminDeleteCourse(id: string): Promise<boolean> {
 
 // CATEGORIES CRUD
 export async function adminSaveCategory(category: Partial<Category>): Promise<Category> {
-  const local = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
-  const current = local.length > 0 ? local : initialCategories;
+  const current = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
   let updatedCat: Category;
   const derivedSlug = slugify(category.slug || category.name || `cat-${Date.now()}`);
 
@@ -1049,8 +1045,7 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
 }
 
 export async function adminDeleteCategory(id: string): Promise<boolean> {
-  const local = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
-  const current = local.length > 0 ? local : initialCategories;
+  const current = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
   const updated = current.filter((c) => c.id !== id);
   setLocal(STORAGE_KEYS.CATEGORIES, updated);
   if (isSupabaseConfigured() && supabase) {
@@ -1066,7 +1061,7 @@ export async function adminDeleteCategory(id: string): Promise<boolean> {
 
 // VOUCHERS CRUD
 export async function adminSaveVoucher(voucher: Partial<Voucher>): Promise<Voucher> {
-  const current = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
+  const current = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, []);
   let updatedV: Voucher;
 
   if (voucher.id && current.some((v) => v.id === voucher.id)) {
@@ -1106,7 +1101,7 @@ export async function adminSaveVoucher(voucher: Partial<Voucher>): Promise<Vouch
 }
 
 export async function adminDeleteVoucher(id: string): Promise<boolean> {
-  const current = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
+  const current = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, []);
   setLocal(STORAGE_KEYS.VOUCHERS, current.filter((v) => v.id !== id));
 
   if (isSupabaseConfigured() && supabase) {
@@ -1119,7 +1114,7 @@ export async function adminDeleteVoucher(id: string): Promise<boolean> {
 
 // BANNERS CRUD
 export async function adminSaveBanner(banner: Partial<Banner>): Promise<Banner> {
-  const current = getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
+  const current = getLocal<Banner>(STORAGE_KEYS.BANNERS, []);
   let updatedB: Banner;
 
   if (banner.id && current.some((b) => b.id === banner.id)) {
@@ -1171,7 +1166,7 @@ export async function adminSaveBanner(banner: Partial<Banner>): Promise<Banner> 
 }
 
 export async function adminDeleteBanner(id: string): Promise<boolean> {
-  const current = getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
+  const current = getLocal<Banner>(STORAGE_KEYS.BANNERS, []);
   setLocal(STORAGE_KEYS.BANNERS, current.filter((b) => b.id !== id));
 
   if (isSupabaseConfigured() && supabase) {
