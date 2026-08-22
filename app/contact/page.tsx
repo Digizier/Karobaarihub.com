@@ -1,0 +1,102 @@
+﻿"use client";
+
+import { useState } from "react";
+import { Phone, Mail, MapPin, MessageCircle, Send, CheckCircle2 } from "lucide-react";
+
+export default function ContactPage() {
+  const [submitted, setSubmitted] = useState(false);
+
+  return (
+    <div className="bg-gray-50 min-h-screen py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-xl mx-auto mb-10">
+          <h1 className="font-serif font-bold text-3xl text-karobaari-darkGray">
+            Customer Care &amp; Support
+          </h1>
+          <p className="text-xs text-gray-500 mt-2">
+            We are here to assist with product inquiries, delivery tracking, real estate appointments, and course access.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
+          <div className="space-y-6">
+            <div>
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Direct Hotline &amp; WhatsApp</span>
+              <a href="tel:+923359939702" className="flex items-center gap-3 font-bold text-base text-karobaari-darkGray hover:text-karobaari-maroon">
+                <Phone className="w-5 h-5 text-karobaari-maroon" />
+                <span>+92 335 9939 702</span>
+              </a>
+            </div>
+
+            <div>
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Official Email</span>
+              <a href="mailto:prismrealestate4@gmail.com" className="flex items-center gap-3 font-medium text-gray-700 hover:text-karobaari-maroon">
+                <Mail className="w-5 h-5 text-karobaari-maroon" />
+                <span>prismrealestate4@gmail.com</span>
+              </a>
+            </div>
+
+            <div>
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Physical Office Address</span>
+              <div className="flex items-start gap-3 text-gray-700">
+                <MapPin className="w-5 h-5 text-karobaari-maroon flex-shrink-0 mt-0.5" />
+                <span>Main Stop Shahpur, Adyala Road, Rawalpindi / Islamabad, Pakistan</span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <a
+                href="https://wa.me/923359939702?text=Hello%20Karobaari%20Hub%20Support"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Live WhatsApp Assistance</span>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-serif font-bold text-base text-karobaari-darkGray mb-4">Send Us a Direct Message</h3>
+            {submitted ? (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center text-green-800">
+                <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <p className="font-bold">Message sent successfully!</p>
+                <p className="text-xs mt-1">Our support team will contact you shortly.</p>
+              </div>
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }} className="space-y-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="Your Name *"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-xs text-karobaari-darkGray"
+                />
+                <input
+                  type="tel"
+                  required
+                  placeholder="Phone Number (WhatsApp) *"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-xs text-karobaari-darkGray"
+                />
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="How can we help you today?"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-xs text-karobaari-darkGray"
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold py-2.5 rounded-lg shadow flex items-center justify-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit Message</span>
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
