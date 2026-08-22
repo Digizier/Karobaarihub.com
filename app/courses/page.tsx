@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { CourseCard } from "@/components/BookCard";
 import { getCourses } from "@/lib/db";
 import { Course } from "@/lib/types";
 import { initialCourses } from "@/lib/mockData";
+import CourseDetailClient from "./[slug]/CourseDetailClient";
 
-export default function CoursesPage() {
+function CoursesContent() {
+  const searchParams = useSearchParams();
+  const slug = searchParams?.get("slug");
+
   const [courses, setCourses] = useState<Course[]>(initialCourses);
   const [loading, setLoading] = useState(true);
 
@@ -18,6 +23,10 @@ export default function CoursesPage() {
       setLoading(false);
     });
   }, []);
+
+  if (slug) {
+    return <CourseDetailClient slug={slug} />;
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen py-6 sm:py-10 w-full overflow-hidden">
@@ -41,5 +50,13 @@ export default function CoursesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center p-6 text-xs text-gray-500 font-medium">Loading courses...</div>}>
+      <CoursesContent />
+    </Suspense>
   );
 }

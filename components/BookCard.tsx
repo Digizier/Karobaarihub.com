@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -30,7 +30,7 @@ export function BookCard({ book }: { book: DigitalBook }) {
 
         <div className="p-2.5 sm:p-3.5">
           <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium block truncate">{book.author}</span>
-          <Link href={`/digital-books/${book.slug}`}>
+          <Link href={`/digital-books/?slug=${book.slug}`}>
             <h3 className="text-[11px] sm:text-xs font-semibold text-karobaari-darkGray group-hover:text-karobaari-maroon line-clamp-2 h-7 sm:h-8 leading-tight my-1">
               {book.title}
             </h3>
@@ -51,7 +51,7 @@ export function BookCard({ book }: { book: DigitalBook }) {
             )}
           </div>
           <Link
-            href={`/digital-books/${book.slug}`}
+            href={`/digital-books/?slug=${book.slug}`}
             className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
           >
             <span>Read</span>
@@ -92,7 +92,7 @@ export function CourseCard({ course }: { course: Course }) {
             </span>
           </div>
 
-          <Link href={`/courses/${course.slug}`}>
+          <Link href={`/courses/?slug=${course.slug}`}>
             <h3 className="text-[11px] sm:text-xs font-semibold text-karobaari-darkGray group-hover:text-karobaari-maroon line-clamp-2 h-7 sm:h-8 leading-tight mb-1">
               {course.title}
             </h3>
@@ -114,7 +114,7 @@ export function CourseCard({ course }: { course: Course }) {
             )}
           </div>
           <Link
-            href={`/courses/${course.slug}`}
+            href={`/courses/?slug=${course.slug}`}
             className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
           >
             <span>Enroll</span>

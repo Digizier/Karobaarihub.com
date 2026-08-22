@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookCard } from "@/components/BookCard";
 import { getDigitalBooks } from "@/lib/db";
 import { DigitalBook } from "@/lib/types";
 import { initialDigitalBooks } from "@/lib/mockData";
+import BookDetailClient from "./[slug]/BookDetailClient";
 
-export default function DigitalBooksPage() {
+function DigitalBooksContent() {
+  const searchParams = useSearchParams();
+  const slug = searchParams?.get("slug");
+
   const [books, setBooks] = useState<DigitalBook[]>(initialDigitalBooks);
   const [loading, setLoading] = useState(true);
 
@@ -18,6 +23,10 @@ export default function DigitalBooksPage() {
       setLoading(false);
     });
   }, []);
+
+  if (slug) {
+    return <BookDetailClient slug={slug} />;
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen py-6 sm:py-10 w-full overflow-hidden">
@@ -41,5 +50,13 @@ export default function DigitalBooksPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DigitalBooksPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center p-6 text-xs text-gray-500 font-medium">Loading digital books...</div>}>
+      <DigitalBooksContent />
+    </Suspense>
   );
 }
