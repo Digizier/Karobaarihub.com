@@ -73,6 +73,22 @@ export function slugify(text?: string): string {
     .replace(/-+$/, "");
 }
 
+export function isValidUUID(id?: string): boolean {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+export function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 // ----------------------------------------------------
 // 1. PUBLIC QUERIES (Zero-Overfetch Column Projections)
 // ----------------------------------------------------
@@ -582,11 +598,9 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
       ...product,
       slug: derivedSlug,
     } as Product;
-    const updated = current.map((p) => (p.id === product.id ? updatedProduct : p));
-    setLocal(STORAGE_KEYS.PRODUCTS, updated);
   } else {
     updatedProduct = {
-      id: product.id || `prod_${Date.now()}`,
+      id: isValidUUID(product.id) ? product.id! : generateUUID(),
       name: product.name || "Untitled Product",
       description: product.description || product.short_description || "",
       short_description: product.short_description || "",
@@ -609,15 +623,50 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
       ...product,
       slug: derivedSlug,
     } as Product;
-    setLocal(STORAGE_KEYS.PRODUCTS, [updatedProduct, ...current]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      const { id, variants, images, ...payload } = updatedProduct;
-      await supabase.from("products").upsert({ id: updatedProduct.id, ...payload });
+      const payload: Record<string, any> = {
+        name: updatedProduct.name,
+        slug: updatedProduct.slug,
+        description: updatedProduct.description,
+        short_description: updatedProduct.short_description,
+        price: updatedProduct.price,
+        sale_price: updatedProduct.sale_price,
+        stock: updatedProduct.stock,
+        rating: updatedProduct.rating,
+        review_count: updatedProduct.review_count,
+        sales_count: updatedProduct.sales_count,
+        thumbnail_url: updatedProduct.thumbnail_url,
+        category_name: updatedProduct.category_name,
+        category_slug: updatedProduct.category_slug,
+        brand_name: updatedProduct.brand_name,
+        is_active: updatedProduct.is_active,
+        is_featured: updatedProduct.is_featured,
+        is_flash_sale: updatedProduct.is_flash_sale,
+        variants: updatedProduct.variants || [],
+        images: updatedProduct.images || [],
+      };
+      if (isValidUUID(updatedProduct.id)) {
+        payload.id = updatedProduct.id;
+      }
+      const { data, error } = await supabase
+        .from("products")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id")
+        .single();
+
+      if (!error && data?.id) {
+        updatedProduct.id = data.id;
+      }
     } catch {}
   }
+
+  const updatedList = current.some((p) => p.id === updatedProduct.id || p.slug === updatedProduct.slug)
+    ? current.map((p) => (p.id === updatedProduct.id || p.slug === updatedProduct.slug ? updatedProduct : p))
+    : [updatedProduct, ...current];
+  setLocal(STORAGE_KEYS.PRODUCTS, updatedList);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("kb_products_updated"));
@@ -656,11 +705,9 @@ export async function adminSaveProperty(property: Partial<Property>): Promise<Pr
       ...property,
       slug: derivedSlug,
     } as Property;
-    const updated = current.map((p) => (p.id === property.id ? updatedProperty : p));
-    setLocal(STORAGE_KEYS.PROPERTIES, updated);
   } else {
     updatedProperty = {
-      id: property.id || `prop_${Date.now()}`,
+      id: isValidUUID(property.id) ? property.id! : generateUUID(),
       title: property.title || "New Property Listing",
       property_type: property.property_type || "House",
       status: property.status || "For Sale",
@@ -680,15 +727,52 @@ export async function adminSaveProperty(property: Partial<Property>): Promise<Pr
       ...property,
       slug: derivedSlug,
     } as Property;
-    setLocal(STORAGE_KEYS.PROPERTIES, [updatedProperty, ...current]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      const { id, images, ...payload } = updatedProperty;
-      await supabase.from("properties").upsert({ id: updatedProperty.id, ...payload });
+      const payload: Record<string, any> = {
+        title: updatedProperty.title,
+        slug: updatedProperty.slug,
+        property_type: updatedProperty.property_type,
+        status: updatedProperty.status,
+        area_marla: updatedProperty.area_marla,
+        price: updatedProperty.price,
+        price_display: updatedProperty.price_display,
+        location: updatedProperty.location,
+        bedrooms: updatedProperty.bedrooms,
+        bathrooms: updatedProperty.bathrooms,
+        kitchens: updatedProperty.kitchens,
+        description: updatedProperty.description,
+        is_featured: updatedProperty.is_featured,
+        thumbnail_url: updatedProperty.thumbnail_url,
+        features: updatedProperty.features || [],
+        is_active: updatedProperty.is_active,
+      };
+      if (isValidUUID(updatedProperty.id)) {
+        payload.id = updatedProperty.id;
+      }
+      const { data, error } = await supabase
+        .from("properties")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id")
+        .single();
+
+      if (!error && data?.id) {
+        updatedProperty.id = data.id;
+      }
     } catch {}
   }
+
+  const updatedList = current.some((p) => p.id === updatedProperty.id || p.slug === updatedProperty.slug)
+    ? current.map((p) => (p.id === updatedProperty.id || p.slug === updatedProperty.slug ? updatedProperty : p))
+    : [updatedProperty, ...current];
+  setLocal(STORAGE_KEYS.PROPERTIES, updatedList);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("kb_properties_updated"));
+  }
+
   return updatedProperty;
 }
 
@@ -717,11 +801,9 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
       ...book,
       slug: derivedSlug,
     } as DigitalBook;
-    const updated = current.map((b) => (b.id === book.id ? updatedBook : b));
-    setLocal(STORAGE_KEYS.BOOKS, updated);
   } else {
     updatedBook = {
-      id: book.id || `book_${Date.now()}`,
+      id: isValidUUID(book.id) ? book.id! : generateUUID(),
       title: book.title || "Untitled Blueprint",
       author: book.author || "Karobaari Hub Academy",
       category: book.category || "Business",
@@ -736,13 +818,11 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
       ...book,
       slug: derivedSlug,
     } as DigitalBook;
-    setLocal(STORAGE_KEYS.BOOKS, [updatedBook, ...current]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("digital_books").upsert({
-        id: updatedBook.id,
+      const payload: Record<string, any> = {
         title: updatedBook.title,
         slug: updatedBook.slug,
         author: updatedBook.author,
@@ -756,9 +836,26 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
         pages_count: updatedBook.pages_count,
         is_active: updatedBook.is_active,
         is_featured: updatedBook.is_featured ?? false,
-      });
+      };
+      if (isValidUUID(updatedBook.id)) {
+        payload.id = updatedBook.id;
+      }
+      const { data, error } = await supabase
+        .from("digital_books")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id")
+        .single();
+
+      if (!error && data?.id) {
+        updatedBook.id = data.id;
+      }
     } catch {}
   }
+
+  const updatedList = current.some((b) => b.id === updatedBook.id || b.slug === updatedBook.slug)
+    ? current.map((b) => (b.id === updatedBook.id || b.slug === updatedBook.slug ? updatedBook : b))
+    : [updatedBook, ...current];
+  setLocal(STORAGE_KEYS.BOOKS, updatedList);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_books_updated"));
@@ -794,11 +891,9 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
       ...course,
       slug: derivedSlug,
     } as Course;
-    const updated = current.map((c) => (c.id === course.id ? updatedCourse : c));
-    setLocal(STORAGE_KEYS.COURSES, updated);
   } else {
     updatedCourse = {
-      id: course.id || `course_${Date.now()}`,
+      id: isValidUUID(course.id) ? course.id! : generateUUID(),
       title: course.title || "New Mastery Course",
       instructor: course.instructor || "Prism Business Hub",
       duration: course.duration || "10 Hours",
@@ -814,13 +909,11 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
       ...course,
       slug: derivedSlug,
     } as Course;
-    setLocal(STORAGE_KEYS.COURSES, [updatedCourse, ...current]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("courses").upsert({
-        id: updatedCourse.id,
+      const payload: Record<string, any> = {
         title: updatedCourse.title,
         slug: updatedCourse.slug,
         short_description: updatedCourse.short_description || "",
@@ -835,9 +928,26 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
         thumbnail_url: updatedCourse.thumbnail_url,
         is_active: updatedCourse.is_active,
         is_featured: updatedCourse.is_featured ?? false,
-      });
+      };
+      if (isValidUUID(updatedCourse.id)) {
+        payload.id = updatedCourse.id;
+      }
+      const { data, error } = await supabase
+        .from("courses")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id")
+        .single();
+
+      if (!error && data?.id) {
+        updatedCourse.id = data.id;
+      }
     } catch {}
   }
+
+  const updatedList = current.some((c) => c.id === updatedCourse.id || c.slug === updatedCourse.slug)
+    ? current.map((c) => (c.id === updatedCourse.id || c.slug === updatedCourse.slug ? updatedCourse : c))
+    : [updatedCourse, ...current];
+  setLocal(STORAGE_KEYS.COURSES, updatedList);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_courses_updated"));
@@ -874,11 +984,9 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
       ...category,
       slug: derivedSlug,
     } as Category;
-    const updated = current.map((c) => (c.id === category.id ? updatedCat : c));
-    setLocal(STORAGE_KEYS.CATEGORIES, updated);
   } else {
     updatedCat = {
-      id: category.id || `cat_${Date.now()}`,
+      id: isValidUUID(category.id) ? category.id! : generateUUID(),
       name: category.name || "New Category",
       image_url: category.image_url || "/assets/cloth-stand-1.jpeg",
       sort_order: category.sort_order ?? (current.length + 1),
@@ -886,14 +994,37 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
       ...category,
       slug: derivedSlug,
     } as Category;
-    setLocal(STORAGE_KEYS.CATEGORIES, [...current, updatedCat]);
   }
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("categories").upsert(updatedCat);
+      const payload: Record<string, any> = {
+        name: updatedCat.name,
+        slug: updatedCat.slug,
+        image_url: updatedCat.image_url,
+        sort_order: updatedCat.sort_order,
+        is_active: updatedCat.is_active,
+      };
+      if (isValidUUID(updatedCat.id)) {
+        payload.id = updatedCat.id;
+      }
+      const { data, error } = await supabase
+        .from("categories")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id")
+        .single();
+
+      if (!error && data?.id) {
+        updatedCat.id = data.id;
+      }
     } catch {}
   }
+
+  const updatedList = current.some((c) => c.id === updatedCat.id || c.slug === updatedCat.slug)
+    ? current.map((c) => (c.id === updatedCat.id || c.slug === updatedCat.slug ? updatedCat : c))
+    : [...current, updatedCat];
+  setLocal(STORAGE_KEYS.CATEGORIES, updatedList);
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("kb_categories_updated"));
   }
