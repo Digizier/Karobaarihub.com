@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams, useParams } from "next/navigation";
 import { ArrowLeft, PhoneCall, BookOpen } from "lucide-react";
 import { DigitalBook } from "@/lib/types";
 import { getDigitalBookBySlug } from "@/lib/db";
@@ -12,24 +13,28 @@ interface BookDetailClientProps {
   slug?: string;
 }
 
-export default function BookDetailClient({ book: initialBook, slug }: BookDetailClientProps) {
+export default function BookDetailClient({ book: initialBook, slug: propSlug }: BookDetailClientProps) {
+  const searchParams = useSearchParams();
+  const params = useParams();
+  const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
+
   const [book, setBook] = useState<DigitalBook | null>(initialBook || null);
   const [loading, setLoading] = useState(!initialBook);
 
   useEffect(() => {
-    if (initialBook) {
+    if (initialBook && (!activeSlug || initialBook.slug === activeSlug)) {
       setBook(initialBook);
       setLoading(false);
       return;
     }
-    if (slug) {
+    if (activeSlug) {
       setLoading(true);
-      getDigitalBookBySlug(slug).then((res) => {
+      getDigitalBookBySlug(activeSlug).then((res) => {
         setBook(res);
         setLoading(false);
       });
     }
-  }, [slug, initialBook]);
+  }, [activeSlug, initialBook]);
 
   if (loading) {
     return (

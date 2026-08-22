@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import {
   Star,
   Truck,
@@ -27,8 +27,12 @@ interface ProductDetailClientProps {
   slug?: string;
 }
 
-export default function ProductDetailClient({ product: initialProduct, slug }: ProductDetailClientProps) {
+export default function ProductDetailClient({ product: initialProduct, slug: propSlug }: ProductDetailClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = useParams();
+  const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
+
   const [product, setProduct] = useState<Product | null>(initialProduct || null);
   const [loading, setLoading] = useState(!initialProduct);
   const [selectedImage, setSelectedImage] = useState(initialProduct?.thumbnail_url || "/assets/cloth-stand-1.jpeg");
@@ -40,16 +44,16 @@ export default function ProductDetailClient({ product: initialProduct, slug }: P
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    if (initialProduct) {
+    if (initialProduct && (!activeSlug || initialProduct.slug === activeSlug)) {
       setProduct(initialProduct);
       setSelectedImage(initialProduct.thumbnail_url);
       setSelectedVariant(initialProduct.variants && initialProduct.variants.length > 0 ? initialProduct.variants[0] : null);
       setLoading(false);
       return;
     }
-    if (slug) {
+    if (activeSlug) {
       setLoading(true);
-      getProductBySlug(slug).then((res) => {
+      getProductBySlug(activeSlug).then((res) => {
         setProduct(res);
         if (res) {
           setSelectedImage(res.thumbnail_url);
@@ -58,7 +62,7 @@ export default function ProductDetailClient({ product: initialProduct, slug }: P
         setLoading(false);
       });
     }
-  }, [slug, initialProduct]);
+  }, [activeSlug, initialProduct]);
 
   useEffect(() => {
     if (product) {

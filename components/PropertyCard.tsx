@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -50,7 +50,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             </span>
           </div>
 
-          <Link href={`/real-estate/property/${property.slug}`}>
+          <Link href={`/real-estate/property/?slug=${property.slug}`}>
             <h3 className="font-serif font-bold text-xs sm:text-sm text-karobaari-darkGray group-hover:text-karobaari-maroon transition-colors line-clamp-2 h-7 sm:h-9 mb-1.5 leading-snug">
               {property.title}
             </h3>

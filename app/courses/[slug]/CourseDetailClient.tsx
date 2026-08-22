@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams, useParams } from "next/navigation";
 import { Clock, Layers, GraduationCap, CheckCircle2, ArrowLeft, PhoneCall, PlayCircle, BookOpen } from "lucide-react";
 import { Course } from "@/lib/types";
 import { getCourseBySlug } from "@/lib/db";
@@ -12,24 +13,28 @@ interface CourseDetailClientProps {
   slug?: string;
 }
 
-export default function CourseDetailClient({ course: initialCourse, slug }: CourseDetailClientProps) {
+export default function CourseDetailClient({ course: initialCourse, slug: propSlug }: CourseDetailClientProps) {
+  const searchParams = useSearchParams();
+  const params = useParams();
+  const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
+
   const [course, setCourse] = useState<Course | null>(initialCourse || null);
   const [loading, setLoading] = useState(!initialCourse);
 
   useEffect(() => {
-    if (initialCourse) {
+    if (initialCourse && (!activeSlug || initialCourse.slug === activeSlug)) {
       setCourse(initialCourse);
       setLoading(false);
       return;
     }
-    if (slug) {
+    if (activeSlug) {
       setLoading(true);
-      getCourseBySlug(slug).then((res) => {
+      getCourseBySlug(activeSlug).then((res) => {
         setCourse(res);
         setLoading(false);
       });
     }
-  }, [slug, initialCourse]);
+  }, [activeSlug, initialCourse]);
 
   if (loading) {
     return (

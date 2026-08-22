@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Product Image */}
-        <Link href={`/product/${product.slug}`} className="block relative aspect-square w-full bg-gray-100 overflow-hidden">
+        <Link href={`/product/?slug=${product.slug}`} className="block relative aspect-square w-full bg-gray-100 overflow-hidden">
           <Image
             src={product.thumbnail_url}
             alt={product.name}
@@ -69,7 +69,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Product Content */}
         <div className="p-2 sm:p-3">
-          <Link href={`/product/${product.slug}`}>
+          <Link href={`/product/?slug=${product.slug}`}>
             <h3 className="text-[11px] sm:text-xs font-medium text-karobaari-darkGray line-clamp-2 h-7 sm:h-8 hover:text-karobaari-maroon leading-tight mb-1">
               {product.name}
             </h3>

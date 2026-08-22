@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams, useParams } from "next/navigation";
 import {
   MapPin,
   Bed,
@@ -23,7 +24,11 @@ interface PropertyDetailClientProps {
   slug?: string;
 }
 
-export default function PropertyDetailClient({ property: initialProperty, slug }: PropertyDetailClientProps) {
+export default function PropertyDetailClient({ property: initialProperty, slug: propSlug }: PropertyDetailClientProps) {
+  const searchParams = useSearchParams();
+  const params = useParams();
+  const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
+
   const [property, setProperty] = useState<Property | null>(initialProperty || null);
   const [loadingProp, setLoadingProp] = useState(!initialProperty);
   const [selectedImg, setSelectedImg] = useState(initialProperty?.thumbnail_url || "/assets/shahpur-house.jpeg");
@@ -35,21 +40,21 @@ export default function PropertyDetailClient({ property: initialProperty, slug }
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (initialProperty) {
+    if (initialProperty && (!activeSlug || initialProperty.slug === activeSlug)) {
       setProperty(initialProperty);
       setSelectedImg(initialProperty.thumbnail_url);
       setLoadingProp(false);
       return;
     }
-    if (slug) {
+    if (activeSlug) {
       setLoadingProp(true);
-      getPropertyBySlug(slug).then((res) => {
+      getPropertyBySlug(activeSlug).then((res) => {
         setProperty(res);
         if (res) setSelectedImg(res.thumbnail_url);
         setLoadingProp(false);
       });
     }
-  }, [slug, initialProperty]);
+  }, [activeSlug, initialProperty]);
 
   if (loadingProp) {
     return (
