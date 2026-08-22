@@ -1,9 +1,5 @@
-﻿name = "karobaarihub"
+name = "karobaarihub-com"
 compatibility_date = "2024-01-01"
 
 [assets]
 directory = "./build"
-
-[env.production]
-name = "karobaarihub-production"
-route = { pattern = "karobaarihub.com/*", zone_name = "karobaarihub.com" }
