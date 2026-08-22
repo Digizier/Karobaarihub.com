@@ -2233,16 +2233,19 @@ export default function AdminPage() {
       {/* BOOK EDIT MODAL */}
       {editingBook && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-3 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b">
-              <h3 className="font-serif font-bold text-base text-gray-900">
-                {editingBook.id ? "Edit E-Book" : "Add New E-Book"}
-              </h3>
-              <button onClick={() => setEditingBook(null)}><X className="w-5 h-5 text-gray-400" /></button>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <div>
+                <h3 className="font-serif font-bold text-base text-gray-900">
+                  {editingBook.id ? "Edit E-Book" : "Add New E-Book"}
+                </h3>
+                <p className="text-[11px] text-gray-500">Configure book details, pricing, format, pages, and download specs.</p>
+              </div>
+              <button onClick={() => setEditingBook(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
 
             <div>
-              <label className="font-bold block mb-1">E-Book Title *</label>
+              <label className="font-bold block mb-1 text-gray-700">E-Book Title *</label>
               <input
                 type="text"
                 value={editingBook.title || ""}
@@ -2254,15 +2257,15 @@ export default function AdminPage() {
                     slug: !editingBook.id || !editingBook.slug ? slugify(newTitle) : editingBook.slug,
                   });
                 }}
-                className="w-full bg-gray-50 border rounded-xl p-2.5"
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-medium"
                 placeholder="e.g. E-Commerce Karobaar Guide Pakistan"
               />
             </div>
 
             <div>
-              <label className="font-bold block mb-1">E-Book URL Slug (Auto-generated from title)</label>
+              <label className="font-bold block mb-1 text-gray-700">E-Book URL Slug (Auto-generated from title)</label>
               <div className="flex items-center bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs">
-                <span className="text-gray-400 select-none">/digital-books/</span>
+                <span className="text-gray-400 select-none font-mono">/digital-books/</span>
                 <input
                   type="text"
                   value={editingBook.slug || ""}
@@ -2273,35 +2276,107 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="font-bold block mb-1">Author</label>
+                <label className="font-bold block mb-1 text-gray-700">Author</label>
                 <input
                   type="text"
                   value={editingBook.author || ""}
                   onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })}
-                  className="w-full bg-gray-50 border rounded-xl p-2.5"
+                  placeholder="e.g. Karobaari Hub Academy"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
                 />
               </div>
               <div>
-                <label className="font-bold block mb-1">Price (PKR)</label>
+                <label className="font-bold block mb-1 text-gray-700">Category</label>
                 <input
-                  type="number"
-                  value={editingBook.price || 499}
-                  onChange={(e) => setEditingBook({ ...editingBook, price: Number(e.target.value) })}
-                  className="w-full bg-gray-50 border rounded-xl p-2.5 font-bold"
+                  type="text"
+                  value={editingBook.category || "Business"}
+                  onChange={(e) => setEditingBook({ ...editingBook, category: e.target.value })}
+                  placeholder="e.g. Business, Real Estate, Investment"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
                 />
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Regular Price (PKR)</label>
+                <input
+                  type="number"
+                  value={editingBook.price ?? 499}
+                  onChange={(e) => setEditingBook({ ...editingBook, price: Number(e.target.value) })}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-bold"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Sale / Offer Price (PKR)</label>
+                <input
+                  type="number"
+                  value={editingBook.sale_price ?? 299}
+                  onChange={(e) => setEditingBook({ ...editingBook, sale_price: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="e.g. 299"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-bold text-karobaari-maroon"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Format</label>
+                <select
+                  value={editingBook.file_format || "PDF"}
+                  onChange={(e) => setEditingBook({ ...editingBook, file_format: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                >
+                  <option value="PDF">PDF</option>
+                  <option value="EPUB">EPUB</option>
+                  <option value="PDF + Audio">PDF + Audio</option>
+                  <option value="ZIP / Bundle">ZIP / Bundle</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Pages Count</label>
+                <input
+                  type="number"
+                  value={editingBook.pages_count ?? 85}
+                  onChange={(e) => setEditingBook({ ...editingBook, pages_count: Number(e.target.value) })}
+                  placeholder="e.g. 85"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Size (MB)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editingBook.file_size_mb ?? 12}
+                  onChange={(e) => setEditingBook({ ...editingBook, file_size_mb: Number(e.target.value) })}
+                  placeholder="e.g. 12"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold block mb-1 text-gray-700">Description / Key Chapters</label>
+              <textarea
+                rows={3}
+                value={editingBook.description || ""}
+                onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })}
+                placeholder="Comprehensive overview, chapter breakdown, and practical insights provided in this e-book..."
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
+              />
+            </div>
+
             <div className="space-y-1.5">
-              <span className="font-bold block">E-Book Cover Art</span>
+              <span className="font-bold block text-gray-700">E-Book Cover Art</span>
               <div className="flex items-center gap-3">
-                <div className="relative w-14 h-20 bg-gray-100 rounded-lg overflow-hidden border">
+                <div className="relative w-14 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-xs">
                   <Image src={editingBook.cover_url || "/assets/ebook-cover.jpeg"} alt="Cover" fill unoptimized className="object-cover" />
                 </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer">
-                  <span>Upload Cover</span>
+                <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors">
+                  <span>Upload Cover Art</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -2314,8 +2389,8 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t flex justify-end gap-2">
-              <button type="button" onClick={() => setEditingBook(null)} className="px-4 py-2 rounded-xl border">Cancel</button>
+            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingBook(null)} className="px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50">Cancel</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -2324,7 +2399,7 @@ export default function AdminPage() {
                   setEditingBook(null);
                   loadAllData();
                 }}
-                className="px-5 py-2 rounded-xl bg-karobaari-maroon text-white font-bold"
+                className="px-5 py-2 rounded-xl bg-karobaari-maroon text-white font-bold hover:bg-karobaari-darkMaroon transition-colors"
               >
                 Save E-Book
               </button>
@@ -2336,16 +2411,19 @@ export default function AdminPage() {
       {/* COURSE EDIT MODAL */}
       {editingCourse && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-3 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b">
-              <h3 className="font-serif font-bold text-base text-gray-900">
-                {editingCourse.id ? "Edit Video Course" : "Add New Video Course"}
-              </h3>
-              <button onClick={() => setEditingCourse(null)}><X className="w-5 h-5 text-gray-400" /></button>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <div>
+                <h3 className="font-serif font-bold text-base text-gray-900">
+                  {editingCourse.id ? "Edit Video Course" : "Add New Video Course"}
+                </h3>
+                <p className="text-[11px] text-gray-500">Configure curriculum, instructor, duration, modules, and pricing.</p>
+              </div>
+              <button onClick={() => setEditingCourse(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
 
             <div>
-              <label className="font-bold block mb-1">Course Title *</label>
+              <label className="font-bold block mb-1 text-gray-700">Course Title *</label>
               <input
                 type="text"
                 value={editingCourse.title || ""}
@@ -2357,15 +2435,15 @@ export default function AdminPage() {
                     slug: !editingCourse.id || !editingCourse.slug ? slugify(newTitle) : editingCourse.slug,
                   });
                 }}
-                className="w-full bg-gray-50 border rounded-xl p-2.5"
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-medium"
                 placeholder="e.g. Mastering Dropshipping Pakistan"
               />
             </div>
 
             <div>
-              <label className="font-bold block mb-1">Course URL Slug (Auto-generated from title)</label>
+              <label className="font-bold block mb-1 text-gray-700">Course URL Slug (Auto-generated from title)</label>
               <div className="flex items-center bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs">
-                <span className="text-gray-400 select-none">/courses/</span>
+                <span className="text-gray-400 select-none font-mono">/courses/</span>
                 <input
                   type="text"
                   value={editingCourse.slug || ""}
@@ -2376,34 +2454,105 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="font-bold block mb-1">Instructor</label>
+                <label className="font-bold block mb-1 text-gray-700">Instructor / Mentor</label>
                 <input
                   type="text"
                   value={editingCourse.instructor || ""}
                   onChange={(e) => setEditingCourse({ ...editingCourse, instructor: e.target.value })}
-                  className="w-full bg-gray-50 border rounded-xl p-2.5"
+                  placeholder="e.g. Prism Business Academy"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
                 />
               </div>
               <div>
-                <label className="font-bold block mb-1">Price (PKR)</label>
+                <label className="font-bold block mb-1 text-gray-700">Skill Level</label>
+                <select
+                  value={editingCourse.level || "All Levels"}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, level: e.target.value as any })}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                >
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                  <option value="All Levels">All Levels</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Duration</label>
+                <input
+                  type="text"
+                  value={editingCourse.duration || "10 Hours"}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, duration: e.target.value })}
+                  placeholder="e.g. 10 Hours"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Modules Count</label>
                 <input
                   type="number"
-                  value={editingCourse.price || 4999}
-                  onChange={(e) => setEditingCourse({ ...editingCourse, price: Number(e.target.value) })}
-                  className="w-full bg-gray-50 border rounded-xl p-2.5 font-bold"
+                  value={editingCourse.modules_count ?? 6}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, modules_count: Number(e.target.value) })}
+                  placeholder="e.g. 6"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Lessons Count</label>
+                <input
+                  type="number"
+                  value={editingCourse.lessons_count ?? 24}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, lessons_count: Number(e.target.value) })}
+                  placeholder="e.g. 24"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-semibold"
                 />
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Regular Price (PKR)</label>
+                <input
+                  type="number"
+                  value={editingCourse.price ?? 4999}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, price: Number(e.target.value) })}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-bold"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1 text-gray-700">Sale / Offer Price (PKR)</label>
+                <input
+                  type="number"
+                  value={editingCourse.sale_price ?? 2999}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, sale_price: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="e.g. 2999"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-bold text-karobaari-maroon"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold block mb-1 text-gray-700">Short Summary</label>
+              <input
+                type="text"
+                value={editingCourse.short_description || ""}
+                onChange={(e) => setEditingCourse({ ...editingCourse, short_description: e.target.value })}
+                placeholder="High-converting Pakistani e-commerce strategy & step-by-step masterclass..."
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
+              />
+            </div>
+
             <div className="space-y-1.5">
-              <span className="font-bold block">Course Thumbnail</span>
+              <span className="font-bold block text-gray-700">Course Thumbnail</span>
               <div className="flex items-center gap-3">
-                <div className="relative w-24 aspect-video bg-gray-900 rounded-lg overflow-hidden border">
+                <div className="relative w-24 aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-200 shadow-xs">
                   <Image src={editingCourse.thumbnail_url || "/assets/course-thumb.jpeg"} alt="Thumb" fill unoptimized className="object-cover" />
                 </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer">
+                <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors">
                   <span>Upload Thumbnail</span>
                   <input
                     type="file"
@@ -2417,8 +2566,8 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t flex justify-end gap-2">
-              <button type="button" onClick={() => setEditingCourse(null)} className="px-4 py-2 rounded-xl border">Cancel</button>
+            <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingCourse(null)} className="px-4 py-2 rounded-xl border border-gray-300 font-semibold hover:bg-gray-50">Cancel</button>
               <button
                 type="button"
                 onClick={async () => {
@@ -2427,7 +2576,7 @@ export default function AdminPage() {
                   setEditingCourse(null);
                   loadAllData();
                 }}
-                className="px-5 py-2 rounded-xl bg-karobaari-maroon text-white font-bold"
+                className="px-5 py-2 rounded-xl bg-karobaari-maroon text-white font-bold hover:bg-karobaari-darkMaroon transition-colors"
               >
                 Save Course
               </button>

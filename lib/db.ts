@@ -686,12 +686,18 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
     } as DigitalBook;
     setLocal(STORAGE_KEYS.BOOKS, [updatedBook, ...current]);
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_books_updated"));
+  }
   return updatedBook;
 }
 
 export async function adminDeleteDigitalBook(id: string): Promise<boolean> {
   const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
   setLocal(STORAGE_KEYS.BOOKS, current.filter((b) => b.id !== id));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_books_updated"));
+  }
   return true;
 }
 
@@ -729,12 +735,18 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
     } as Course;
     setLocal(STORAGE_KEYS.COURSES, [updatedCourse, ...current]);
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_courses_updated"));
+  }
   return updatedCourse;
 }
 
 export async function adminDeleteCourse(id: string): Promise<boolean> {
   const current = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
   setLocal(STORAGE_KEYS.COURSES, current.filter((c) => c.id !== id));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("kb_courses_updated"));
+  }
   return true;
 }
 
