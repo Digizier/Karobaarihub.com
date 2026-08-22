@@ -131,6 +131,7 @@ export interface Course {
   price: number;
   sale_price?: number | null;
   thumbnail_url: string;
+  youtube_url?: string;
   curriculum?: { module_title: string; lessons: string[] }[];
   is_featured: boolean;
   is_active: boolean;

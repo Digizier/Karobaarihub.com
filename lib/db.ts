@@ -239,10 +239,14 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     return localProduct || null;
   }
   try {
+    const filters = [`slug.eq.${slug}`];
+    if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+    if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
     const { data, error } = await supabase
       .from("products")
       .select("*, variants:product_variants(*), images:product_images(*)")
-      .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+      .or(filters.join(","))
       .limit(1)
       .maybeSingle();
 
@@ -287,7 +291,7 @@ export async function getProperties(params: PropertyFilterParams = {}): Promise<
   try {
     let query = supabase
       .from("properties")
-      .select("id, title, slug, property_type, status, area_marla, price_pkr, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active", { count: "exact" })
+      .select("id, title, slug, property_type, status, area_marla, price, price_pkr, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active", { count: "exact" })
       .eq("is_active", true);
 
     if (selectedType) query = query.eq("property_type", selectedType);
@@ -321,10 +325,14 @@ export async function getPropertyBySlug(slug: string): Promise<Property | null> 
 
   if (!isSupabaseConfigured() || !supabase) return localProperty || null;
   try {
+    const filters = [`slug.eq.${slug}`];
+    if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+    if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
     const { data, error } = await supabase
       .from("properties")
       .select("*, images:property_images(*)")
-      .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+      .or(filters.join(","))
       .limit(1)
       .maybeSingle();
 
@@ -352,10 +360,14 @@ export async function getDigitalBookBySlug(slug: string): Promise<DigitalBook | 
   const clean = slugify(slug);
   if (isSupabaseConfigured() && supabase) {
     try {
+      const filters = [`slug.eq.${slug}`];
+      if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+      if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
       const { data, error } = await supabase
         .from("digital_books")
         .select("*")
-        .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+        .or(filters.join(","))
         .limit(1)
         .maybeSingle();
 
@@ -383,10 +395,14 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
   const clean = slugify(slug);
   if (isSupabaseConfigured() && supabase) {
     try {
+      const filters = [`slug.eq.${slug}`];
+      if (clean && clean !== slug) filters.push(`slug.eq.${clean}`);
+      if (isValidUUID(slug)) filters.push(`id.eq.${slug}`);
+
       const { data, error } = await supabase
         .from("courses")
         .select("*")
-        .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+        .or(filters.join(","))
         .limit(1)
         .maybeSingle();
 
@@ -926,6 +942,7 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
         price: updatedCourse.price,
         sale_price: updatedCourse.sale_price,
         thumbnail_url: updatedCourse.thumbnail_url,
+        youtube_url: updatedCourse.youtube_url || "",
         is_active: updatedCourse.is_active,
         is_featured: updatedCourse.is_featured ?? false,
       };

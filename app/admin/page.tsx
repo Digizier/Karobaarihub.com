@@ -2579,6 +2579,18 @@ export default function AdminPage() {
               />
             </div>
 
+            <div>
+              <label className="font-bold block mb-1 text-gray-700">YouTube Video / Playlist URL</label>
+              <input
+                type="url"
+                value={editingCourse.youtube_url || ""}
+                onChange={(e) => setEditingCourse({ ...editingCourse, youtube_url: e.target.value })}
+                placeholder="https://www.youtube.com/watch?v=... or playlist link"
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-mono text-xs"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">When students click &quot;Watch Video&quot; or the player, they will be redirected to this YouTube link.</p>
+            </div>
+
             <div className="space-y-1.5">
               <span className="font-bold block text-gray-700">Course Thumbnail</span>
               <div className="flex items-center gap-3">

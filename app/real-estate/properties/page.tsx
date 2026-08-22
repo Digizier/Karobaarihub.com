@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Building2, Filter, RotateCcw } from "lucide-react";
@@ -13,7 +13,7 @@ export default function PropertiesCatalogPage() {
   const [maxMarla, setMaxMarla] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadPropertiesData = () => {
     setLoading(true);
     getProperties({
       type: type || undefined,
@@ -24,6 +24,16 @@ export default function PropertiesCatalogPage() {
       setProperties(res.properties);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    loadPropertiesData();
+    window.addEventListener("kb_properties_updated", loadPropertiesData);
+    window.addEventListener("focus", loadPropertiesData);
+    return () => {
+      window.removeEventListener("kb_properties_updated", loadPropertiesData);
+      window.removeEventListener("focus", loadPropertiesData);
+    };
   }, [type, minMarla, maxMarla]);
 
   const reset = () => {

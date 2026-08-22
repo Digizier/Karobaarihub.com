@@ -80,14 +80,33 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
         </Link>
 
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-8 shadow-xs space-y-4 sm:space-y-6">
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full">
-            <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover" />
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 text-karobaari-maroon flex items-center justify-center shadow-xl">
-                <PlayCircle className="w-7 h-7 sm:w-8 sm:h-8" />
+          {course.youtube_url ? (
+            <a
+              href={course.youtube_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full group cursor-pointer shadow-md"
+            >
+              <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/25 flex flex-col items-center justify-center transition-colors">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                  <PlayCircle className="w-8 h-8 sm:w-9 sm:h-9" />
+                </div>
+                <span className="mt-2.5 text-[11px] sm:text-xs font-bold text-white bg-black/75 px-3.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow">
+                  <span>Watch Video Course on YouTube</span> &rarr;
+                </span>
+              </div>
+            </a>
+          ) : (
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full">
+              <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 text-karobaari-maroon flex items-center justify-center shadow-xl">
+                  <PlayCircle className="w-7 h-7 sm:w-8 sm:h-8" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="text-xs">
             <span className="bg-karobaari-maroon text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded">
@@ -127,17 +146,30 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
 
             <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-2xl sm:text-3xl font-serif font-extrabold text-karobaari-maroon">
-                {currentPrice === 0 ? "FREE" : `Rs. ${currentPrice.toLocaleString()}`}
+                {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
               </div>
-              <a
-                href={`https://wa.me/923359939702?text=${whatsappMsg}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
-              >
-                <PhoneCall className="w-4 h-4" />
-                <span>Enroll Instantly via WhatsApp</span>
-              </a>
+              <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+                {course.youtube_url && (
+                  <a
+                    href={course.youtube_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    <span>Watch on YouTube</span>
+                  </a>
+                )}
+                <a
+                  href={`https://wa.me/923359939702?text=${whatsappMsg}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  <span>Enroll Instantly via WhatsApp</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

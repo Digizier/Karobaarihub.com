@@ -16,13 +16,23 @@ export default function RealEstatePage() {
   const [properties, setProperties] = useState<Property[]>(initialProperties);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadPropertiesData = () => {
     getProperties({ limit: 24 }).then((res) => {
       if (res && res.properties && res.properties.length > 0) {
         setProperties(res.properties);
       }
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    loadPropertiesData();
+    window.addEventListener("kb_properties_updated", loadPropertiesData);
+    window.addEventListener("focus", loadPropertiesData);
+    return () => {
+      window.removeEventListener("kb_properties_updated", loadPropertiesData);
+      window.removeEventListener("focus", loadPropertiesData);
+    };
   }, []);
 
   const featuredDeal = properties.find((p) => p.is_featured) || properties[0] || initialProperties[0];
