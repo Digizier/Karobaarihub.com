@@ -78,28 +78,27 @@ export function slugify(text?: string): string {
 // ----------------------------------------------------
 
 export async function getCategories(): Promise<Category[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, slug, image_url, parent_id, sort_order, is_active")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        const cats = (data as Category[]).filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
+        setLocal(STORAGE_KEYS.CATEGORIES, cats);
+        return cats;
+      }
+    } catch {}
+  }
+
   const local = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
   if (local && local.length > 0) {
     return local.filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
   }
-
-  if (!isSupabaseConfigured()) {
-    return initialCategories;
-  }
-  try {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id, name, slug, image_url, parent_id, sort_order, is_active")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
-
-    if (error || !data || data.length === 0) {
-      return initialCategories;
-    }
-    return (data as Category[]).filter((c) => !["digital-books", "online-courses", "real-estate"].includes(c.slug));
-  } catch {
-    return initialCategories;
-  }
+  return initialCategories;
 }
 
 export interface ProductFilterParams {
@@ -321,66 +320,102 @@ export async function getPropertyBySlug(slug: string): Promise<Property | null> 
 }
 
 export async function getDigitalBooks(): Promise<DigitalBook[]> {
-  const localList = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
-  if (!isSupabaseConfigured() || !supabase) return localList;
-  try {
-    const { data, error } = await supabase.from("digital_books").select("*").eq("is_active", true);
-    if (error || !data || data.length === 0) return localList;
-    return data as DigitalBook[];
-  } catch {
-    return localList;
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("digital_books").select("*").eq("is_active", true).order("created_at", { ascending: false });
+      if (!error && data && data.length > 0) {
+        setLocal(STORAGE_KEYS.BOOKS, data as DigitalBook[]);
+        return data as DigitalBook[];
+      }
+    } catch {}
   }
+  return getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
 }
 
 export async function getDigitalBookBySlug(slug: string): Promise<DigitalBook | null> {
-  const localList = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
   const clean = slugify(slug);
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("digital_books")
+        .select("*")
+        .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) return data as DigitalBook;
+    } catch {}
+  }
+  const localList = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
   return localList.find((b) => b.slug === slug || slugify(b.slug) === clean || b.id === slug || slugify(b.title) === clean) || null;
 }
 
 export async function getCourses(): Promise<Course[]> {
-  const localList = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
-  if (!isSupabaseConfigured() || !supabase) return localList;
-  try {
-    const { data, error } = await supabase.from("courses").select("*").eq("is_active", true);
-    if (error || !data || data.length === 0) return localList;
-    return data as Course[];
-  } catch {
-    return localList;
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("courses").select("*").eq("is_active", true).order("created_at", { ascending: false });
+      if (!error && data && data.length > 0) {
+        setLocal(STORAGE_KEYS.COURSES, data as Course[]);
+        return data as Course[];
+      }
+    } catch {}
   }
+  return getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
 }
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
-  const localList = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
   const clean = slugify(slug);
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .or(`slug.eq.${slug},slug.eq.${clean},id.eq.${slug}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) return data as Course;
+    } catch {}
+  }
+  const localList = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
   return localList.find((c) => c.slug === slug || slugify(c.slug) === clean || c.id === slug || slugify(c.title) === clean) || null;
 }
 
 export async function getBanners(): Promise<Banner[]> {
-  const localList = getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
-  if (!isSupabaseConfigured()) return localList;
-  try {
-    const { data, error } = await supabase.from("banners").select("*").eq("is_active", true).order("sort_order");
-    if (error || !data || data.length === 0) return localList;
-    return data as Banner[];
-  } catch {
-    return localList;
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("banners").select("*").eq("is_active", true).order("sort_order", { ascending: true });
+      if (!error && data && data.length > 0) {
+        setLocal(STORAGE_KEYS.BANNERS, data as Banner[]);
+        return data as Banner[];
+      }
+    } catch {}
   }
+  return getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
 }
 
 export async function getVouchers(): Promise<Voucher[]> {
-  const localList = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
-  if (!isSupabaseConfigured()) return localList;
-  try {
-    const { data, error } = await supabase.from("vouchers").select("*").eq("is_active", true);
-    if (error || !data || data.length === 0) return localList;
-    return data as Voucher[];
-  } catch {
-    return localList;
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("vouchers").select("*").eq("is_active", true);
+      if (!error && data && data.length > 0) {
+        setLocal(STORAGE_KEYS.VOUCHERS, data as Voucher[]);
+        return data as Voucher[];
+      }
+    } catch {}
   }
+  return getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
 }
 
 export async function getTestimonials(): Promise<Testimonial[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("testimonials").select("*").eq("is_active", true);
+      if (!error && data && data.length > 0) {
+        return data as Testimonial[];
+      }
+    } catch {}
+  }
   return initialTestimonials;
 }
 
@@ -408,7 +443,7 @@ export async function createOrder(
   const existingOrders = getLocal<Order>(STORAGE_KEYS.ORDERS, []);
   setLocal(STORAGE_KEYS.ORDERS, [newOrder, ...existingOrders]);
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && supabase) {
     try {
       const { data: insertedOrder, error: orderError } = await supabase
         .from("orders")
@@ -421,7 +456,7 @@ export async function createOrder(
         await supabase.from("order_items").insert(orderItemsPayload);
       }
     } catch (err) {
-      console.warn("Supabase order sync bypassed (saved locally):", err);
+      console.warn("Supabase order sync error:", err);
     }
   }
 
@@ -429,26 +464,26 @@ export async function createOrder(
 }
 
 export async function getOrderByTracking(query: string): Promise<Order | null> {
-  const localOrders = getLocal<Order>(STORAGE_KEYS.ORDERS, []);
   const cleanQ = query.trim().toUpperCase();
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, items:order_items(*)")
+        .or(`order_number.eq.${cleanQ},tracking_token.eq.${cleanQ},customer_phone.ilike.%${cleanQ}%`)
+        .limit(1)
+        .single();
+
+      if (!error && data) return data as Order;
+    } catch {}
+  }
+
+  const localOrders = getLocal<Order>(STORAGE_KEYS.ORDERS, []);
   const foundLocal = localOrders.find(
     (o) => o.order_number.toUpperCase() === cleanQ || o.tracking_token.toUpperCase() === cleanQ || o.customer_phone.includes(cleanQ)
   );
-
-  if (!isSupabaseConfigured()) return foundLocal || null;
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*, items:order_items(*)")
-      .or(`order_number.eq.${cleanQ},tracking_token.eq.${cleanQ},customer_phone.ilike.%${cleanQ}%`)
-      .limit(1)
-      .single();
-
-    if (error || !data) return foundLocal || null;
-    return data as Order;
-  } catch {
-    return foundLocal || null;
-  }
+  return foundLocal || null;
 }
 
 export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & { customer_name: string; customer_phone: string }): Promise<{ success: boolean; error?: string }> {
@@ -466,7 +501,7 @@ export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & 
   const existingInquiries = getLocal<PropertyInquiry>(STORAGE_KEYS.INQUIRIES, []);
   setLocal(STORAGE_KEYS.INQUIRIES, [newInq, ...existingInquiries]);
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && supabase) {
     try {
       await supabase.from("property_inquiries").insert([inquiry]);
     } catch {}
@@ -480,38 +515,55 @@ export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & 
 
 export async function getAdminOverview() {
   const orders = await adminGetOrders();
+  const inquiries = await adminGetInquiries();
 
-  const products = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
-  const properties = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
-  const books = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
-  const courses = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
-  const inquiries = getLocal<PropertyInquiry>(STORAGE_KEYS.INQUIRIES, [
-    {
-      id: "inq_1",
-      property_id: "prop_1",
-      property_title: "4 Marla 1.5 Story Brand New House in Shahpur",
-      customer_name: "Chaudhry Bilal",
-      customer_phone: "0335 1234567",
-      preferred_visit_date: "2026-08-25",
-      message: "Want to inspect sweet water boring and street width.",
-      status: "New",
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  let productsCount = 0;
+  let propertiesCount = 0;
+  let booksCount = 0;
+  let coursesCount = 0;
+  let inquiriesCount = inquiries.length;
+  let lowStock = 0;
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const [pRes, propRes, bRes, cRes] = await Promise.all([
+        supabase.from("products").select("id, stock", { count: "exact" }),
+        supabase.from("properties").select("id", { count: "exact" }),
+        supabase.from("digital_books").select("id", { count: "exact" }),
+        supabase.from("courses").select("id", { count: "exact" }),
+      ]);
+
+      productsCount = pRes.count ?? pRes.data?.length ?? 0;
+      propertiesCount = propRes.count ?? propRes.data?.length ?? 0;
+      booksCount = bRes.count ?? bRes.data?.length ?? 0;
+      coursesCount = cRes.count ?? cRes.data?.length ?? 0;
+      if (pRes.data) {
+        lowStock = pRes.data.filter((p: any) => (p.stock || 0) < 10).length;
+      }
+    } catch {}
+  }
+
+  if (productsCount === 0) {
+    const products = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
+    productsCount = products.length;
+    lowStock = products.filter((p) => p.stock < 10).length;
+    propertiesCount = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties).length;
+    booksCount = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks).length;
+    coursesCount = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses).length;
+  }
 
   const totalSales = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
   const pendingOrders = orders.filter((o) => o.order_status === "Pending").length;
-  const lowStock = products.filter((p) => p.stock < 10).length;
 
   return {
     totalSales,
     totalOrders: orders.length,
     pendingOrders,
-    activeProducts: products.length,
-    activeProperties: properties.length,
-    activeBooks: books.length,
-    activeCourses: courses.length,
-    totalInquiries: inquiries.length,
+    activeProducts: productsCount,
+    activeProperties: propertiesCount,
+    activeBooks: booksCount,
+    activeCourses: coursesCount,
+    totalInquiries: inquiriesCount,
     lowStockAlerts: lowStock,
     recentOrders: orders.slice(0, 8),
     recentInquiries: inquiries.slice(0, 5),
@@ -888,12 +940,32 @@ export async function adminSaveVoucher(voucher: Partial<Voucher>): Promise<Vouch
     } as Voucher;
     setLocal(STORAGE_KEYS.VOUCHERS, [updatedV, ...current]);
   }
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("vouchers").upsert({
+        id: updatedV.id,
+        code: updatedV.code,
+        discount_type: updatedV.discount_type,
+        discount_value: updatedV.discount_value,
+        min_spend: updatedV.min_spend,
+        is_free_shipping: updatedV.is_free_shipping,
+        is_active: updatedV.is_active,
+      });
+    } catch {}
+  }
   return updatedV;
 }
 
 export async function adminDeleteVoucher(id: string): Promise<boolean> {
   const current = getLocal<Voucher>(STORAGE_KEYS.VOUCHERS, initialVouchers);
   setLocal(STORAGE_KEYS.VOUCHERS, current.filter((v) => v.id !== id));
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("vouchers").delete().eq("id", id);
+    } catch {}
+  }
   return true;
 }
 
@@ -920,12 +992,33 @@ export async function adminSaveBanner(banner: Partial<Banner>): Promise<Banner> 
     } as Banner;
     setLocal(STORAGE_KEYS.BANNERS, [updatedB, ...current]);
   }
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("banners").upsert({
+        id: updatedB.id,
+        title: updatedB.title,
+        subtitle: updatedB.subtitle,
+        image_url: updatedB.image_url,
+        link_url: updatedB.link_url,
+        cta_text: updatedB.cta_text,
+        sort_order: updatedB.sort_order,
+        is_active: updatedB.is_active,
+      });
+    } catch {}
+  }
   return updatedB;
 }
 
 export async function adminDeleteBanner(id: string): Promise<boolean> {
   const current = getLocal<Banner>(STORAGE_KEYS.BANNERS, initialBanners);
   setLocal(STORAGE_KEYS.BANNERS, current.filter((b) => b.id !== id));
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("banners").delete().eq("id", id);
+    } catch {}
+  }
   return true;
 }
 
@@ -961,23 +1054,20 @@ export async function adminSaveShippingConfig(config: AdminShippingConfig): Prom
 }
 
 export async function adminGetOrders(): Promise<Order[]> {
-  const local = getLocal<Order>(STORAGE_KEYS.ORDERS, []);
-  if (!isSupabaseConfigured() || !supabase) {
-    return local;
-  }
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*, items:order_items(*)")
-      .order("created_at", { ascending: false });
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, items:order_items(*)")
+        .order("created_at", { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return data as Order[];
-    }
-    return local;
-  } catch {
-    return local;
+      if (!error && data && data.length > 0) {
+        setLocal(STORAGE_KEYS.ORDERS, data as Order[]);
+        return data as Order[];
+      }
+    } catch {}
   }
+  return getLocal<Order>(STORAGE_KEYS.ORDERS, []);
 }
 
 export async function adminSaveOrder(order: Partial<Order>): Promise<Order> {
@@ -1015,7 +1105,8 @@ export async function adminSaveOrder(order: Partial<Order>): Promise<Order> {
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("orders").upsert(updatedOrder);
+      const { id, items, ...payload } = updatedOrder;
+      await supabase.from("orders").upsert({ id: updatedOrder.id, ...payload });
     } catch {}
   }
   return updatedOrder;
@@ -1037,7 +1128,7 @@ export async function adminUpdateOrderStatus(orderId: string, status: Order["ord
   const updated = current.map((o) => (o.id === orderId ? { ...o, order_status: status } : o));
   setLocal(STORAGE_KEYS.ORDERS, updated);
 
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && supabase) {
     try {
       await supabase.from("orders").update({ order_status: status }).eq("id", orderId);
     } catch {}
@@ -1047,6 +1138,15 @@ export async function adminUpdateOrderStatus(orderId: string, status: Order["ord
 
 // INQUIRIES MANAGEMENT
 export async function adminGetInquiries(): Promise<PropertyInquiry[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("property_inquiries").select("*").order("created_at", { ascending: false });
+      if (!error && data) {
+        setLocal(STORAGE_KEYS.INQUIRIES, data as PropertyInquiry[]);
+        return data as PropertyInquiry[];
+      }
+    } catch {}
+  }
   return getLocal<PropertyInquiry>(STORAGE_KEYS.INQUIRIES, []);
 }
 
@@ -1054,12 +1154,24 @@ export async function adminUpdateInquiryStatus(inquiryId: string, status: Proper
   const current = getLocal<PropertyInquiry>(STORAGE_KEYS.INQUIRIES, []);
   const updated = current.map((i) => (i.id === inquiryId ? { ...i, status } : i));
   setLocal(STORAGE_KEYS.INQUIRIES, updated);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("property_inquiries").update({ status }).eq("id", inquiryId);
+    } catch {}
+  }
   return true;
 }
 
 export async function adminDeleteInquiry(inquiryId: string): Promise<boolean> {
   const current = getLocal<PropertyInquiry>(STORAGE_KEYS.INQUIRIES, []);
   setLocal(STORAGE_KEYS.INQUIRIES, current.filter((i) => i.id !== inquiryId));
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("property_inquiries").delete().eq("id", inquiryId);
+    } catch {}
+  }
   return true;
 }
 
@@ -1095,6 +1207,41 @@ export async function uploadImageFile(file: File, folder = "products"): Promise<
 
 // SITE SETTINGS MANAGEMENT
 export async function getSiteSettings(): Promise<SiteSettings> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase.from("site_settings").select("key, value");
+      if (!error && data && data.length > 0) {
+        const settingsMap: Record<string, string> = {};
+        data.forEach((row: { key: string; value: string }) => {
+          settingsMap[row.key] = row.value;
+        });
+        const merged: SiteSettings = {
+          ...initialSiteSettings,
+          site_name: settingsMap.site_name || initialSiteSettings.site_name,
+          hotline: settingsMap.hotline || initialSiteSettings.hotline,
+          whatsapp: settingsMap.whatsapp || settingsMap.whatsapp_number || initialSiteSettings.whatsapp,
+          email: settingsMap.email || settingsMap.contact_email || initialSiteSettings.email,
+          address: settingsMap.address || initialSiteSettings.address,
+          standard_shipping_fee: settingsMap.standard_shipping_fee ? Number(settingsMap.standard_shipping_fee) : initialSiteSettings.standard_shipping_fee,
+          free_shipping_threshold: settingsMap.free_shipping_threshold ? Number(settingsMap.free_shipping_threshold) : initialSiteSettings.free_shipping_threshold,
+          coins_discount_rate: settingsMap.coins_discount_rate ? Number(settingsMap.coins_discount_rate) : initialSiteSettings.coins_discount_rate,
+          cod_enabled: settingsMap.cod_enabled !== undefined ? settingsMap.cod_enabled === "true" : initialSiteSettings.cod_enabled,
+          jazzcash_number: settingsMap.jazzcash_number || initialSiteSettings.jazzcash_number,
+          jazzcash_title: settingsMap.jazzcash_title || initialSiteSettings.jazzcash_title,
+          easypaisa_number: settingsMap.easypaisa_number || initialSiteSettings.easypaisa_number,
+          easypaisa_title: settingsMap.easypaisa_title || initialSiteSettings.easypaisa_title,
+          bank_name: settingsMap.bank_name || initialSiteSettings.bank_name,
+          bank_account_title: settingsMap.bank_account_title || initialSiteSettings.bank_account_title,
+          bank_account_number: settingsMap.bank_account_number || initialSiteSettings.bank_account_number,
+        };
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
+        }
+        return merged;
+      }
+    } catch {}
+  }
+
   if (typeof window === "undefined") return initialSiteSettings;
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -1112,7 +1259,27 @@ export async function adminSaveSiteSettings(settings: SiteSettings): Promise<Sit
   }
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("site_settings").upsert({ id: "main", ...settings });
+      const entries = [
+        { key: "site_name", value: settings.site_name || "" },
+        { key: "hotline", value: settings.hotline || "" },
+        { key: "whatsapp", value: settings.whatsapp || "" },
+        { key: "email", value: settings.email || "" },
+        { key: "address", value: settings.address || "" },
+        { key: "standard_shipping_fee", value: String(settings.standard_shipping_fee ?? 199) },
+        { key: "free_shipping_threshold", value: String(settings.free_shipping_threshold ?? 3000) },
+        { key: "coins_discount_rate", value: String(settings.coins_discount_rate ?? 0.05) },
+        { key: "cod_enabled", value: String(settings.cod_enabled ?? true) },
+        { key: "jazzcash_number", value: settings.jazzcash_number || "" },
+        { key: "jazzcash_title", value: settings.jazzcash_title || "" },
+        { key: "easypaisa_number", value: settings.easypaisa_number || "" },
+        { key: "easypaisa_title", value: settings.easypaisa_title || "" },
+        { key: "bank_name", value: settings.bank_name || "" },
+        { key: "bank_account_title", value: settings.bank_account_title || "" },
+        { key: "bank_account_number", value: settings.bank_account_number || "" },
+      ];
+      for (const entry of entries) {
+        await supabase.from("site_settings").upsert(entry);
+      }
     } catch {}
   }
   return settings;
