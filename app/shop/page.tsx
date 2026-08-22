@@ -7,12 +7,15 @@ import {
   Filter,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   RotateCcw,
   X,
 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { getProducts, getCategories } from "@/lib/db";
 import { Product, Category } from "@/lib/types";
+
+const ITEMS_PER_PAGE = 8;
 
 function ShopContent({ categoryParam }: { categoryParam?: string }) {
   const searchParams = useSearchParams();
@@ -26,6 +29,7 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   // Filters State
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -39,22 +43,7 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
     getCategories().then(setCategories);
   };
 
-  useEffect(() => {
-    loadCategoriesData();
-    window.addEventListener("kb_categories_updated", loadCategoriesData);
-    window.addEventListener("storage", loadCategoriesData);
-    return () => {
-      window.removeEventListener("kb_categories_updated", loadCategoriesData);
-      window.removeEventListener("storage", loadCategoriesData);
-    };
-  }, []);
-
-  useEffect(() => {
-    const current = categoryParam || (params?.category as string) || searchParams.get("category") || "";
-    setSelectedCategory(current);
-  }, [categoryParam, params, searchParams]);
-
-  useEffect(() => {
+  const loadProductsData = () => {
     setLoading(true);
     getProducts({
       categorySlug: selectedCategory || undefined,
@@ -63,7 +52,7 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       sort,
-      limit: 24,
+      limit: 100,
       offset: 0,
     }).then((res) => {
       let filtered = res.products;
@@ -74,6 +63,31 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
       setTotal(filtered.length);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    loadCategoriesData();
+    window.addEventListener("kb_categories_updated", loadCategoriesData);
+    window.addEventListener("kb_products_updated", loadProductsData);
+    window.addEventListener("storage", () => {
+      loadCategoriesData();
+      loadProductsData();
+    });
+    return () => {
+      window.removeEventListener("kb_categories_updated", loadCategoriesData);
+      window.removeEventListener("kb_products_updated", loadProductsData);
+      window.removeEventListener("storage", () => {});
+    };
+  }, [selectedCategory, initialSearch, initialFlash, minPrice, maxPrice, minRating, sort]);
+
+  useEffect(() => {
+    const current = categoryParam || (params?.category as string) || searchParams.get("category") || "";
+    setSelectedCategory(current);
+  }, [categoryParam, params, searchParams]);
+
+  useEffect(() => {
+    setPage(1);
+    loadProductsData();
   }, [selectedCategory, initialSearch, initialFlash, minPrice, maxPrice, minRating, sort]);
 
   const resetFilters = () => {
@@ -82,6 +96,7 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
     setMaxPrice("");
     setMinRating(0);
     setSort("best_match");
+    setPage(1);
   };
 
   const activeCategoryObj = categories.find((c) => c.slug === selectedCategory);
@@ -246,11 +261,74 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3.5">
-                {products.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3.5">
+                  {products.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+                </div>
+
+                {/* PAGINATION CONTROLS */}
+                {Math.ceil(products.length / ITEMS_PER_PAGE) > 1 && (
+                  <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="text-xs text-gray-500 font-medium">
+                      Showing {(page - 1) * ITEMS_PER_PAGE + 1} - {Math.min(page * ITEMS_PER_PAGE, products.length)} of {products.length} Products
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={page === 1}
+                        onClick={() => {
+                          setPage((p) => Math.max(1, p - 1));
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
+                          page === 1 ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                        }`}
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                      </button>
+
+                      {Array.from({ length: Math.ceil(products.length / ITEMS_PER_PAGE) }).map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => {
+                              setPage(pageNum);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                              page === pageNum
+                                ? "bg-karobaari-maroon text-white shadow-xs"
+                                : "border border-gray-200 text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        disabled={page === Math.ceil(products.length / ITEMS_PER_PAGE)}
+                        onClick={() => {
+                          setPage((p) => Math.min(Math.ceil(products.length / ITEMS_PER_PAGE), p + 1));
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
+                          page === Math.ceil(products.length / ITEMS_PER_PAGE)
+                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                        }`}
+                      >
+                        Next <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </main>
         </div>

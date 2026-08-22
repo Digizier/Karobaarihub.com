@@ -1504,6 +1504,7 @@ export default function AdminPage() {
                       const c = categories.find((cat) => cat.slug === e.target.value);
                       setEditingProduct({
                         ...editingProduct,
+                        category_id: c?.id,
                         category_slug: e.target.value,
                         category_name: c?.name || "General",
                       });

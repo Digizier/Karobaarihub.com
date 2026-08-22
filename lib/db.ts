@@ -115,65 +115,70 @@ export interface ProductFilterParams {
   offset?: number;
 }
 
+export function filterLocalProducts(list: Product[], params: ProductFilterParams = {}): { products: Product[]; total: number } {
+  let filtered = [...list].filter((p) => p.is_active !== false);
+
+  if (params.categorySlug) {
+    const targetSlug = params.categorySlug.toLowerCase().trim();
+    filtered = filtered.filter((p) => {
+      if (p.category_slug && p.category_slug.toLowerCase().trim() === targetSlug) return true;
+      if (p.category_name && slugify(p.category_name) === targetSlug) return true;
+      if (p.category_id) {
+        const cats = getLocal<Category>(STORAGE_KEYS.CATEGORIES, initialCategories);
+        const matchedCat = cats.find((c) => c.id === p.category_id);
+        if (matchedCat && matchedCat.slug.toLowerCase().trim() === targetSlug) return true;
+      }
+      return false;
+    });
+  }
+  if (params.search) {
+    const q = params.search.toLowerCase().trim();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand_name?.toLowerCase().includes(q) ||
+        p.short_description?.toLowerCase().includes(q)
+    );
+  }
+  if (params.flashSaleOnly) {
+    filtered = filtered.filter((p) => Boolean(p.is_flash_sale));
+  }
+  if (params.featuredOnly) {
+    filtered = filtered.filter((p) => Boolean(p.is_featured));
+  }
+  if (params.province) {
+    filtered = filtered.filter((p) => p.location_tag?.toLowerCase().includes(params.province!.toLowerCase()));
+  }
+  if (params.minPrice !== undefined && !isNaN(params.minPrice) && params.minPrice > 0) {
+    filtered = filtered.filter((p) => (p.sale_price ?? p.price) >= params.minPrice!);
+  }
+  if (params.maxPrice !== undefined && !isNaN(params.maxPrice) && params.maxPrice > 0) {
+    filtered = filtered.filter((p) => (p.sale_price ?? p.price) <= params.maxPrice!);
+  }
+
+  if (params.sort === "top_sales") {
+    filtered.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0));
+  } else if (params.sort === "price_asc") {
+    filtered.sort((a, b) => (a.sale_price ?? a.price) - (b.sale_price ?? b.price));
+  } else if (params.sort === "price_desc") {
+    filtered.sort((a, b) => (b.sale_price ?? b.price) - (a.sale_price ?? a.price));
+  } else if (params.sort === "newest") {
+    filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  }
+
+  const total = filtered.length;
+  const offset = params.offset || 0;
+  const limit = params.limit || 24;
+  const paginated = filtered.slice(offset, offset + limit);
+
+  return { products: paginated, total };
+}
+
 export async function getProducts(params: ProductFilterParams = {}): Promise<{ products: Product[]; total: number }> {
   const localList = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
 
-  if (!isSupabaseConfigured()) {
-    let filtered = [...localList].filter((p) => p.is_active !== false);
-
-    if (params.categorySlug) {
-      const targetSlug = params.categorySlug.toLowerCase().trim();
-      filtered = filtered.filter((p) => {
-        if (p.category_slug && p.category_slug.toLowerCase() === targetSlug) return true;
-        if (p.category_name && slugify(p.category_name) === targetSlug) return true;
-        if (p.category_id) {
-          const matchedCat = initialCategories.find((c) => c.id === p.category_id);
-          if (matchedCat && matchedCat.slug.toLowerCase() === targetSlug) return true;
-        }
-        return false;
-      });
-    }
-    if (params.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand_name?.toLowerCase().includes(q) ||
-          p.short_description?.toLowerCase().includes(q)
-      );
-    }
-    if (params.flashSaleOnly) {
-      filtered = filtered.filter((p) => p.is_flash_sale);
-    }
-    if (params.featuredOnly) {
-      filtered = filtered.filter((p) => p.is_featured);
-    }
-    if (params.province) {
-      filtered = filtered.filter((p) => p.location_tag?.toLowerCase().includes(params.province!.toLowerCase()));
-    }
-    if (params.minPrice) {
-      filtered = filtered.filter((p) => (p.sale_price ?? p.price) >= params.minPrice!);
-    }
-    if (params.maxPrice) {
-      filtered = filtered.filter((p) => (p.sale_price ?? p.price) <= params.maxPrice!);
-    }
-
-    if (params.sort === "top_sales") {
-      filtered.sort((a, b) => b.sales_count - a.sales_count);
-    } else if (params.sort === "price_asc") {
-      filtered.sort((a, b) => (a.sale_price ?? a.price) - (b.sale_price ?? b.price));
-    } else if (params.sort === "price_desc") {
-      filtered.sort((a, b) => (b.sale_price ?? b.price) - (a.sale_price ?? a.price));
-    } else if (params.sort === "newest") {
-      filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-    }
-
-    const total = filtered.length;
-    const offset = params.offset || 0;
-    const limit = params.limit || 24;
-    const paginated = filtered.slice(offset, offset + limit);
-
-    return { products: paginated, total };
+  if (!isSupabaseConfigured() || !supabase) {
+    return filterLocalProducts(localList, params);
   }
 
   try {
@@ -186,8 +191,8 @@ export async function getProducts(params: ProductFilterParams = {}): Promise<{ p
     if (params.flashSaleOnly) query = query.eq("is_flash_sale", true);
     if (params.featuredOnly) query = query.eq("is_featured", true);
     if (params.search) query = query.ilike("name", `%${params.search}%`);
-    if (params.minPrice) query = query.gte("price", params.minPrice);
-    if (params.maxPrice) query = query.lte("price", params.maxPrice);
+    if (params.minPrice !== undefined && params.minPrice > 0) query = query.gte("price", params.minPrice);
+    if (params.maxPrice !== undefined && params.maxPrice > 0) query = query.lte("price", params.maxPrice);
 
     if (params.sort === "price_asc") query = query.order("price", { ascending: true });
     else if (params.sort === "price_desc") query = query.order("price", { ascending: false });
@@ -199,12 +204,12 @@ export async function getProducts(params: ProductFilterParams = {}): Promise<{ p
     query = query.range(offset, offset + limit - 1);
 
     const { data, count, error } = await query;
-    if (error || !data || data.length === 0) {
-      return { products: localList.slice(0, params.limit || 24), total: localList.length };
+    if (error || !data) {
+      return filterLocalProducts(localList, params);
     }
-    return { products: data as Product[], total: count || data.length };
+    return { products: data as Product[], total: count !== null ? count : data.length };
   } catch {
-    return { products: localList.slice(0, params.limit || 24), total: localList.length };
+    return filterLocalProducts(localList, params);
   }
 }
 
@@ -474,48 +479,7 @@ export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & 
 // ----------------------------------------------------
 
 export async function getAdminOverview() {
-  const orders = getLocal<Order>(STORAGE_KEYS.ORDERS, [
-    {
-      id: "ord_101",
-      order_number: "KH-101623",
-      tracking_token: "TRK101",
-      customer_name: "Imran Haqqani",
-      customer_phone: "0312 1222333",
-      province: "Islamabad",
-      city: "Islamabad",
-      delivery_address: "Street 14, F-8/2",
-      address_label: "Home",
-      subtotal: 1666,
-      discount_amount: 0,
-      shipping_fee: 0,
-      total_amount: 1666,
-      payment_method: "COD",
-      payment_status: "Pending",
-      order_status: "Pending",
-      created_at: new Date().toISOString(),
-      items: [],
-    },
-    {
-      id: "ord_102",
-      order_number: "KH-888395",
-      tracking_token: "TRK102",
-      customer_name: "Nadir Habib",
-      customer_phone: "0322 2685868",
-      province: "Punjab",
-      city: "Lahore",
-      delivery_address: "DHA Phase 5",
-      address_label: "Office",
-      subtotal: 41500,
-      discount_amount: 500,
-      shipping_fee: 0,
-      total_amount: 41000,
-      payment_method: "COD",
-      payment_status: "Pending",
-      order_status: "Pending",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      items: [],
-    },
-  ]);
+  const orders = await adminGetOrders();
 
   const products = getLocal<Product>(STORAGE_KEYS.PRODUCTS, initialProducts);
   const properties = getLocal<Property>(STORAGE_KEYS.PROPERTIES, initialProperties);
@@ -603,6 +567,10 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     } catch {}
   }
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("kb_products_updated"));
+  }
+
   return updatedProduct;
 }
 
@@ -616,6 +584,11 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
       await supabase.from("products").delete().eq("id", id);
     } catch {}
   }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("kb_products_updated"));
+  }
+
   return true;
 }
 
@@ -917,7 +890,23 @@ export async function adminSaveShippingConfig(config: AdminShippingConfig): Prom
 }
 
 export async function adminGetOrders(): Promise<Order[]> {
-  return getLocal<Order>(STORAGE_KEYS.ORDERS, []);
+  const local = getLocal<Order>(STORAGE_KEYS.ORDERS, []);
+  if (!isSupabaseConfigured() || !supabase) {
+    return local;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*, items:order_items(*)")
+      .order("created_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      return data as Order[];
+    }
+    return local;
+  } catch {
+    return local;
+  }
 }
 
 export async function adminSaveOrder(order: Partial<Order>): Promise<Order> {
