@@ -686,6 +686,28 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
     } as DigitalBook;
     setLocal(STORAGE_KEYS.BOOKS, [updatedBook, ...current]);
   }
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("digital_books").upsert({
+        id: updatedBook.id,
+        title: updatedBook.title,
+        slug: updatedBook.slug,
+        author: updatedBook.author,
+        category: updatedBook.category,
+        description: updatedBook.description || "",
+        price: updatedBook.price,
+        sale_price: updatedBook.sale_price,
+        cover_url: updatedBook.cover_url,
+        file_format: updatedBook.file_format,
+        file_size_mb: updatedBook.file_size_mb,
+        pages_count: updatedBook.pages_count,
+        is_active: updatedBook.is_active,
+        is_featured: updatedBook.is_featured ?? false,
+      });
+    } catch {}
+  }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_books_updated"));
   }
@@ -695,6 +717,13 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
 export async function adminDeleteDigitalBook(id: string): Promise<boolean> {
   const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, initialDigitalBooks);
   setLocal(STORAGE_KEYS.BOOKS, current.filter((b) => b.id !== id));
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("digital_books").delete().eq("id", id);
+    } catch {}
+  }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_books_updated"));
   }
@@ -735,6 +764,29 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
     } as Course;
     setLocal(STORAGE_KEYS.COURSES, [updatedCourse, ...current]);
   }
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("courses").upsert({
+        id: updatedCourse.id,
+        title: updatedCourse.title,
+        slug: updatedCourse.slug,
+        short_description: updatedCourse.short_description || "",
+        description: updatedCourse.description || "",
+        instructor: updatedCourse.instructor,
+        level: updatedCourse.level,
+        duration: updatedCourse.duration,
+        modules_count: updatedCourse.modules_count,
+        lessons_count: updatedCourse.lessons_count,
+        price: updatedCourse.price,
+        sale_price: updatedCourse.sale_price,
+        thumbnail_url: updatedCourse.thumbnail_url,
+        is_active: updatedCourse.is_active,
+        is_featured: updatedCourse.is_featured ?? false,
+      });
+    } catch {}
+  }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_courses_updated"));
   }
@@ -744,6 +796,13 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
 export async function adminDeleteCourse(id: string): Promise<boolean> {
   const current = getLocal<Course>(STORAGE_KEYS.COURSES, initialCourses);
   setLocal(STORAGE_KEYS.COURSES, current.filter((c) => c.id !== id));
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from("courses").delete().eq("id", id);
+    } catch {}
+  }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("kb_courses_updated"));
   }
