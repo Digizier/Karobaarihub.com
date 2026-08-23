@@ -109,9 +109,11 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
     );
   }
 
-  const currentPrice = selectedVariant?.sale_price ?? selectedVariant?.price ?? product.sale_price ?? product.price;
-  const originalPrice = selectedVariant?.price ?? product.price;
-  const discountPercent = product.sale_price || (selectedVariant && selectedVariant.sale_price)
+  const currentPrice = selectedVariant?.sale_price || selectedVariant?.price || product.sale_price || product.price;
+  const originalPrice = selectedVariant?.price && selectedVariant?.sale_price
+    ? selectedVariant.price
+    : (product.price > currentPrice ? product.price : currentPrice);
+  const discountPercent = originalPrice > currentPrice
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : null;
 
@@ -279,25 +281,28 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
                     Select Option:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {product.variants.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => setSelectedVariant(v)}
-                        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                          selectedVariant?.id === v.id
-                            ? "bg-karobaari-maroon text-white border-karobaari-maroon shadow-xs"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
-                        }`}
-                      >
-                        {v.name}
-                        {v.sale_price && (
-                          <span className="ml-1 text-[10px] opacity-80">
-                            (Rs. {v.sale_price.toLocaleString()})
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {product.variants.map((v) => {
+                      const vPrice = v.sale_price || v.price;
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setSelectedVariant(v)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                            selectedVariant?.id === v.id
+                              ? "bg-karobaari-maroon text-white border-karobaari-maroon shadow-xs"
+                              : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                          }`}
+                        >
+                          <span>{v.name}</span>
+                          {vPrice ? (
+                            <span className="ml-1 text-[10px] opacity-85 font-normal">
+                              (Rs. {vPrice.toLocaleString()})
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

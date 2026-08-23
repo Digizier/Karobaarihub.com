@@ -1766,11 +1766,11 @@ export default function AdminPage() {
                   onClick={() => {
                     const currentVars = editingProduct.variants || [];
                     const newVar: ProductVariant = {
-                      id: `var_${Date.now()}`,
+                      id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                       product_id: editingProduct.id || "",
                       name: "Option " + (currentVars.length + 1),
-                      price: editingProduct.price || 999,
-                      sale_price: editingProduct.sale_price,
+                      price: editingProduct.sale_price || editingProduct.price || 999,
+                      sale_price: undefined,
                       stock: 10,
                       is_active: true,
                     };
@@ -1785,8 +1785,8 @@ export default function AdminPage() {
               {editingProduct.variants && editingProduct.variants.length > 0 ? (
                 <div className="space-y-2">
                   {editingProduct.variants.map((v, idx) => (
-                    <div key={v.id || idx} className="grid grid-cols-4 gap-2 bg-gray-50 p-2.5 rounded-xl border items-center">
-                      <div>
+                    <div key={v.id || idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-gray-50 p-2.5 rounded-xl border items-center">
+                      <div className="sm:col-span-4">
                         <span className="text-[10px] text-gray-400 block font-semibold">Variant Name</span>
                         <input
                           type="text"
@@ -1797,43 +1797,58 @@ export default function AdminPage() {
                             setEditingProduct({ ...editingProduct, variants: updated });
                           }}
                           className="w-full bg-white border rounded-lg p-1.5 font-bold text-xs"
-                          placeholder="e.g. Red - Large"
+                          placeholder="e.g. Black ( 256 )"
                         />
                       </div>
-                      <div>
-                        <span className="text-[10px] text-gray-400 block font-semibold">Price (PKR)</span>
+                      <div className="sm:col-span-3">
+                        <span className="text-[10px] text-gray-400 block font-semibold">Price (PKR) *</span>
                         <input
                           type="number"
-                          value={v.price}
+                          value={v.price || ""}
                           onChange={(e) => {
                             const updated = [...editingProduct.variants!];
-                            updated[idx].price = Number(e.target.value);
+                            updated[idx].price = Number(e.target.value) || 0;
                             setEditingProduct({ ...editingProduct, variants: updated });
                           }}
                           className="w-full bg-white border rounded-lg p-1.5 text-xs font-bold"
+                          placeholder="327565"
                         />
                       </div>
-                      <div>
+                      <div className="sm:col-span-3">
+                        <span className="text-[10px] text-gray-400 block font-semibold">Sale Price (Optional)</span>
+                        <input
+                          type="number"
+                          value={v.sale_price || ""}
+                          onChange={(e) => {
+                            const updated = [...editingProduct.variants!];
+                            updated[idx].sale_price = e.target.value ? Number(e.target.value) : undefined;
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          className="w-full bg-white border rounded-lg p-1.5 text-xs font-bold text-karobaari-maroon"
+                          placeholder="Optional discount"
+                        />
+                      </div>
+                      <div className="sm:col-span-1">
                         <span className="text-[10px] text-gray-400 block font-semibold">Stock</span>
                         <input
                           type="number"
-                          value={v.stock}
+                          value={v.stock ?? 10}
                           onChange={(e) => {
                             const updated = [...editingProduct.variants!];
-                            updated[idx].stock = Number(e.target.value);
+                            updated[idx].stock = Number(e.target.value) || 0;
                             setEditingProduct({ ...editingProduct, variants: updated });
                           }}
                           className="w-full bg-white border rounded-lg p-1.5 text-xs"
                         />
                       </div>
-                      <div className="flex items-center justify-end pt-3">
+                      <div className="sm:col-span-1 flex items-center justify-end sm:pt-4">
                         <button
                           type="button"
                           onClick={() => {
                             const updated = editingProduct.variants!.filter((_, i) => i !== idx);
                             setEditingProduct({ ...editingProduct, variants: updated });
                           }}
-                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold"
+                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold w-full flex items-center justify-center"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
