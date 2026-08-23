@@ -109,8 +109,11 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
     );
   }
 
-  const currentPrice = selectedVariant?.sale_price || selectedVariant?.price || product.sale_price || product.price;
-  const originalPrice = selectedVariant?.price && selectedVariant?.sale_price
+  const variantSalePrice = selectedVariant?.sale_price && selectedVariant.sale_price > 0 && selectedVariant.sale_price < (selectedVariant.price || product.price) && selectedVariant.sale_price !== 799
+    ? selectedVariant.sale_price
+    : undefined;
+  const currentPrice = variantSalePrice || selectedVariant?.price || product.sale_price || product.price;
+  const originalPrice = selectedVariant?.price && variantSalePrice
     ? selectedVariant.price
     : (product.price > currentPrice ? product.price : currentPrice);
   const discountPercent = originalPrice > currentPrice
@@ -282,7 +285,8 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {product.variants.map((v) => {
-                      const vPrice = v.sale_price || v.price;
+                      const vSale = v.sale_price && v.sale_price > 0 && v.sale_price < v.price && v.sale_price !== 799 ? v.sale_price : undefined;
+                      const vPrice = vSale || v.price;
                       return (
                         <button
                           key={v.id}

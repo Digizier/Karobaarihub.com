@@ -618,8 +618,8 @@ export default function AdminPage() {
                     setEditingProduct({
                       name: "",
                       slug: "",
-                      price: 999,
-                      sale_price: 799,
+                      price: 1000,
+                      sale_price: undefined,
                       stock: 25,
                       brand_name: "Karobaari Hub",
                       category_name: categories[0]?.name || "Electronic Accessories",

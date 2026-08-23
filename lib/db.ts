@@ -638,6 +638,22 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     } as Product;
   }
 
+  // Clean variants before saving
+  const cleanedVariants = (updatedProduct.variants || []).map((v) => {
+    const vPrice = Number(v.price) || updatedProduct.price || 0;
+    const vSalePrice = typeof v.sale_price === "number" && v.sale_price > 0 && v.sale_price < vPrice && v.sale_price !== 799
+      ? v.sale_price
+      : undefined;
+    return {
+      ...v,
+      price: vPrice,
+      sale_price: vSalePrice,
+      stock: Number(v.stock) || 0,
+      is_active: v.is_active ?? true,
+    };
+  });
+  updatedProduct.variants = cleanedVariants;
+
   if (isSupabaseConfigured() && supabase) {
     try {
       const payload: Record<string, any> = {
@@ -658,7 +674,7 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
         is_active: updatedProduct.is_active,
         is_featured: updatedProduct.is_featured,
         is_flash_sale: updatedProduct.is_flash_sale,
-        variants: updatedProduct.variants || [],
+        variants: cleanedVariants,
         images: updatedProduct.images || [],
         location_tag: updatedProduct.location_tag || "Punjab",
       };

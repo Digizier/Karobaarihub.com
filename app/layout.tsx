@@ -31,11 +31,12 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
+      { url: "/icon.png", type: "image/png" },
       { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
     ],
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
   },
   openGraph: {
     title: "Karobaari Hub & Prism Real Estate | Mega Marketplace & Properties",
@@ -45,10 +46,10 @@ export const metadata: Metadata = {
     siteName: "Karobaari Hub & Prism Real Estate",
     images: [
       {
-        url: "/icon.svg",
+        url: "/logo.png",
         width: 512,
         height: 512,
-        alt: "Karobaari Hub Logo",
+        alt: "Karobaari Hub Official Logo",
       },
     ],
     locale: "en_PK",
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
     title: "Karobaari Hub & Prism Real Estate",
     description:
       "Pakistan's premier multi-niche commerce & verified real estate portal.",
-    images: ["/icon.svg"],
+    images: ["/logo.png"],
   },
 };
 
