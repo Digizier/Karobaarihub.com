@@ -160,8 +160,8 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
   // Collect all gallery images cleanly
   const allGalleryImages = [
     product.thumbnail_url,
-    ...(product.images?.map((i) => i.public_url) || []),
-  ].filter(Boolean);
+    ...(product.images?.map((i: any) => (typeof i === "string" ? i : i?.public_url || i?.url || i?.image_url)) || []),
+  ].filter(Boolean) as string[];
   const uniqueGalleryImages = Array.from(new Set(allGalleryImages));
 
   return (

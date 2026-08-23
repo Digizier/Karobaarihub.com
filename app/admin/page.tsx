@@ -200,7 +200,7 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === "karobaari1234@#%" || pin === "admin123" || pin === "786") {
+    if (pin === "karobaari1234@#%") {
       setIsAuthenticated(true);
       sessionStorage.setItem("kb_admin_session", "true");
       setPinError("");
@@ -690,7 +690,13 @@ export default function AdminPage() {
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
-                                  onClick={() => setEditingProduct({ ...p })}
+                                  onClick={() =>
+                                    setEditingProduct({
+                                      ...p,
+                                      images: Array.isArray(p.images) ? p.images : [],
+                                      variants: Array.isArray(p.variants) ? p.variants : [],
+                                    })
+                                  }
                                   className="p-1 hover:bg-gray-100 rounded text-gray-600"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />

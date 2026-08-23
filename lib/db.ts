@@ -194,7 +194,7 @@ export async function getProducts(params: ProductFilterParams = {}): Promise<{ p
     try {
       let query = supabase
         .from("products")
-        .select("id, name, slug, price, sale_price, stock, rating, review_count, sales_count, thumbnail_url, category_name, category_slug, brand_name, is_flash_sale, is_featured, is_active, location_tag", { count: "exact" })
+        .select("*", { count: "exact" })
         .eq("is_active", true);
 
       if (params.categorySlug) query = query.eq("category_slug", params.categorySlug);
@@ -236,7 +236,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
       const { data, error } = await supabase
         .from("products")
-        .select("*, variants:product_variants(*), images:product_images(*)")
+        .select("*")
         .or(filters.join(","))
         .limit(1)
         .maybeSingle();
@@ -272,7 +272,7 @@ export async function getProperties(params: PropertyFilterParams = {}): Promise<
     try {
       let query = supabase
         .from("properties")
-        .select("id, title, slug, property_type, status, area_marla, price, price_display, location, bedrooms, bathrooms, kitchens, is_featured, thumbnail_url, features, is_active, created_at", { count: "exact" })
+        .select("*", { count: "exact" })
         .eq("is_active", true);
 
       if (selectedType) query = query.eq("property_type", selectedType);
@@ -321,7 +321,7 @@ export async function getPropertyBySlug(slug: string): Promise<Property | null> 
 
       const { data, error } = await supabase
         .from("properties")
-        .select("*, images:property_images(*)")
+        .select("*")
         .or(filters.join(","))
         .limit(1)
         .maybeSingle();
@@ -660,6 +660,7 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
         is_flash_sale: updatedProduct.is_flash_sale,
         variants: updatedProduct.variants || [],
         images: updatedProduct.images || [],
+        location_tag: updatedProduct.location_tag || "Punjab",
       };
       if (isValidUUID(updatedProduct.id)) {
         payload.id = updatedProduct.id;
