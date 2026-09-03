@@ -44,13 +44,13 @@ export default function DarazCategoryMenu({ categories }: DarazCategoryMenuProps
   };
 
   return (
-    <div ref={menuRef} className="relative inline-block text-left">
+    <div ref={menuRef} className="relative inline-block text-left shrink-0">
       {/* TRIGGER BUTTON */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 text-karobaari-maroon font-extrabold hover:text-karobaari-darkMaroon transition-colors py-1 px-2.5 rounded-lg hover:bg-karobaari-maroon/10 cursor-pointer text-xs"
+        className="flex items-center gap-1.5 text-karobaari-maroon font-extrabold hover:text-karobaari-darkMaroon transition-colors py-1 px-2.5 rounded-lg hover:bg-karobaari-maroon/10 cursor-pointer text-xs shrink-0 whitespace-nowrap"
         aria-expanded={isOpen}
       >
         <Menu className="w-4 h-4 text-karobaari-maroon" />

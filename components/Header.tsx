@@ -278,41 +278,41 @@ export default function Header() {
         </div>
       </div>
 
-      {/* 3. CATEGORY & NAVIGATION STRIP */}
+      {/* 3. CATEGORY & NAVIGATION STRIP (Smooth Horizontal Scroll on Mobile) */}
       <div className="bg-karobaari-offWhite border-b border-gray-200 w-full relative z-30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6">
-          <div className="flex items-center justify-start sm:justify-start gap-4 sm:gap-7 py-1.5 text-xs font-semibold text-karobaari-darkGray whitespace-nowrap">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 overflow-x-auto md:overflow-visible scrollbar-none [touch-action:pan-x] overscroll-x-contain">
+          <div className="flex items-center justify-start gap-4 sm:gap-7 py-2 sm:py-1.5 text-xs font-semibold text-karobaari-darkGray whitespace-nowrap min-w-max">
             <DarazCategoryMenu categories={categories} />
 
             <Link
               href="/real-estate"
-              className="text-karobaari-darkMaroon font-bold flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors flex-shrink-0"
+              className="text-karobaari-darkMaroon font-bold flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors shrink-0"
             >
-              <Building2 className="w-4 h-4 text-karobaari-gold" />
+              <Building2 className="w-4 h-4 text-karobaari-gold shrink-0" />
               <span>Real Estate</span>
             </Link>
 
             <Link
               href="/digital-books"
-              className="flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors flex-shrink-0"
+              className="flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors shrink-0"
             >
-              <BookOpen className="w-4 h-4 text-karobaari-maroon" />
+              <BookOpen className="w-4 h-4 text-karobaari-maroon shrink-0" />
               <span>E-Books</span>
             </Link>
 
             <Link
               href="/courses"
-              className="flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors flex-shrink-0"
+              className="flex items-center gap-1.5 hover:text-karobaari-maroon transition-colors shrink-0"
             >
-              <GraduationCap className="w-4 h-4 text-purple-700" />
+              <GraduationCap className="w-4 h-4 text-purple-700 shrink-0" />
               <span>Courses</span>
             </Link>
 
             <Link
               href="/shop?flash=true"
-              className="flex items-center gap-1.5 text-red-600 font-bold hover:text-red-700 transition-colors flex-shrink-0"
+              className="flex items-center gap-1.5 text-red-600 font-bold hover:text-red-700 transition-colors shrink-0 pr-3 sm:pr-0"
             >
-              <Sparkles className="w-4 h-4 text-red-600 animate-pulse" />
+              <Sparkles className="w-4 h-4 text-red-600 animate-pulse shrink-0" />
               <span>Flash Deals</span>
             </Link>
           </div>
