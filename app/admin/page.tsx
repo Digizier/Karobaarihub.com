@@ -91,6 +91,7 @@ import {
   uploadImageFile,
   testSupabaseConnection,
   slugify,
+  cleanPropertySlug,
 } from "@/lib/db";
 import { initialSiteSettings } from "@/lib/mockData";
 
@@ -737,18 +738,19 @@ export default function AdminPage() {
                     setEditingProperty({
                       title: "",
                       slug: "",
-                      property_type: "House",
+                      property_type: "Plot",
                       status: "For Sale",
                       area_marla: 5,
-                      price_display: "Rs. 1 Crore 20 Lakh",
-                      location: "Main Stop Shahpur, Adyala Road, Rawalpindi",
-                      bedrooms: 3,
-                      bathrooms: 3,
-                      kitchens: 2,
-                      description: "Luxury modern house for sale with direct registry.",
+                      price_display: "",
+                      location: "Adyala Road, Rawalpindi",
+                      bedrooms: 0,
+                      bathrooms: 0,
+                      kitchens: 0,
+                      description: "",
+                      custom_note: "",
+                      features: ["Direct Registry", "Sweet Water", "Electricity"],
                       is_featured: true,
                       thumbnail_url: "/assets/shahpur-house.jpeg",
-                      features: ["Direct Registry", "Sweet Water", "Electricity"],
                       is_active: true,
                     })
                   }
@@ -778,7 +780,22 @@ export default function AdminPage() {
                     <div className="p-3.5 pt-0 border-t flex justify-between items-center text-[10px] text-gray-400">
                       <span>{prop.status}</span>
                       <div className="flex gap-1.5">
-                        <button onClick={() => setEditingProperty({ ...prop })} className="p-1 hover:bg-gray-100 rounded"><Edit2 className="w-3.5 h-3.5 text-gray-600" /></button>
+                        <button
+                          onClick={() =>
+                            setEditingProperty({
+                              ...prop,
+                              bedrooms: prop.bedrooms ?? 0,
+                              bathrooms: prop.bathrooms ?? 0,
+                              kitchens: prop.kitchens ?? 0,
+                              custom_note: prop.custom_note || "",
+                              features: prop.features || [],
+                              description: prop.description || "",
+                            })
+                          }
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-gray-600" />
+                        </button>
                         <button onClick={() => setDeleteModal({ isOpen: true, type: "property", id: prop.id, title: prop.title })} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
                       </div>
                     </div>
@@ -1926,30 +1943,46 @@ export default function AdminPage() {
                 <label className="font-bold block mb-1">Property Title *</label>
                 <input
                   type="text"
+                  required
                   value={editingProperty.title || ""}
                   onChange={(e) => {
                     const newTitle = e.target.value;
+                    const curSlug = editingProperty.slug || "";
+                    const isCorrupted = curSlug.includes("youtube") || curSlug.includes("http") || curSlug.includes("youtu.be");
+                    const shouldAutoUpdate = !editingProperty.id || !curSlug || isCorrupted;
                     setEditingProperty({
                       ...editingProperty,
                       title: newTitle,
-                      slug: !editingProperty.id || !editingProperty.slug ? slugify(newTitle) : editingProperty.slug,
+                      slug: shouldAutoUpdate ? cleanPropertySlug(newTitle) : curSlug,
                     });
                   }}
-                  className="w-full bg-gray-50 border rounded-xl p-2.5"
-                  placeholder="e.g. 5 Marla Brand New House Shahpur"
+                  className="w-full bg-gray-50 border rounded-xl p-2.5 font-semibold"
+                  placeholder="e.g. Double Street 11 Marla Plot in Sultanabad, Adyala Road Rawalpindi | Ready for Construction"
                 />
               </div>
 
               <div>
-                <label className="font-bold block mb-1">Property URL Slug (Auto-generated from title)</label>
-                <div className="flex items-center bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold block">Property URL Slug</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const clean = cleanPropertySlug(editingProperty.title);
+                      setEditingProperty({ ...editingProperty, slug: clean });
+                    }}
+                    className="text-[10px] text-karobaari-maroon font-bold hover:underline flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" /> Auto-Generate from Title
+                  </button>
+                </div>
+                <div className="flex items-center bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus-within:border-karobaari-maroon">
                   <span className="text-gray-400 select-none">/real-estate/property/</span>
                   <input
                     type="text"
                     value={editingProperty.slug || ""}
-                    onChange={(e) => setEditingProperty({ ...editingProperty, slug: slugify(e.target.value) })}
+                    onChange={(e) => setEditingProperty({ ...editingProperty, slug: cleanPropertySlug(e.target.value) })}
                     className="bg-transparent border-none outline-hidden w-full font-mono text-karobaari-maroon font-semibold ml-1"
-                    placeholder="e.g. 5-marla-brand-new-house-shahpur"
+                    placeholder="e.g. double-street-11-marla-plot-sultanabad-adyala-road-rawalpindi"
                   />
                 </div>
               </div>
@@ -1958,14 +1991,24 @@ export default function AdminPage() {
                 <div>
                   <label className="font-bold block mb-1">Property Type</label>
                   <select
-                    value={editingProperty.property_type || "House"}
-                    onChange={(e) => setEditingProperty({ ...editingProperty, property_type: e.target.value as any })}
+                    value={editingProperty.property_type || "Plot"}
+                    onChange={(e) => {
+                      const newType = e.target.value as any;
+                      const isPlot = newType === "Plot";
+                      setEditingProperty({
+                        ...editingProperty,
+                        property_type: newType,
+                        bedrooms: isPlot ? 0 : (editingProperty.bedrooms || 3),
+                        bathrooms: isPlot ? 0 : (editingProperty.bathrooms || 3),
+                      });
+                    }}
                     className="w-full bg-gray-50 border rounded-xl p-2.5"
                   >
-                    <option value="House">House</option>
                     <option value="Plot">Residential Plot</option>
                     <option value="Commercial">Commercial Plaza / Plot</option>
+                    <option value="House">House</option>
                     <option value="Apartment">Apartment</option>
+                    <option value="Farmhouse">Farmhouse</option>
                   </select>
                 </div>
 
@@ -1983,9 +2026,10 @@ export default function AdminPage() {
                   <label className="font-bold block mb-1">Demand Price Display *</label>
                   <input
                     type="text"
-                    value={editingProperty.price_display || "Rs. 1 Crore 20 Lakh"}
+                    value={editingProperty.price_display || ""}
                     onChange={(e) => setEditingProperty({ ...editingProperty, price_display: e.target.value })}
                     className="w-full bg-gray-50 border rounded-xl p-2.5 font-bold text-karobaari-maroon"
+                    placeholder="e.g. Rs. 3 lac 20 hazar per marla"
                   />
                 </div>
 
@@ -1993,31 +2037,99 @@ export default function AdminPage() {
                   <label className="font-bold block mb-1">Location *</label>
                   <input
                     type="text"
-                    value={editingProperty.location || "Main Stop Shahpur, Adyala Road, Rawalpindi"}
+                    value={editingProperty.location || ""}
                     onChange={(e) => setEditingProperty({ ...editingProperty, location: e.target.value })}
                     className="w-full bg-gray-50 border rounded-xl p-2.5"
+                    placeholder="e.g. Sultanabad near dha4 RVN, Adyala Road, Rawalpindi"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">Bedrooms</label>
+                  <label className="font-bold block mb-1">
+                    Bedrooms <span className="text-gray-400 font-normal">(0 for plots, up to 50+)</span>
+                  </label>
                   <input
                     type="number"
-                    value={editingProperty.bedrooms || 3}
-                    onChange={(e) => setEditingProperty({ ...editingProperty, bedrooms: Number(e.target.value) })}
-                    className="w-full bg-gray-50 border rounded-xl p-2.5"
+                    min={0}
+                    max={100}
+                    value={editingProperty.bedrooms ?? 0}
+                    onChange={(e) =>
+                      setEditingProperty({
+                        ...editingProperty,
+                        bedrooms: Math.max(0, parseInt(e.target.value, 10) || 0),
+                      })
+                    }
+                    className="w-full bg-gray-50 border rounded-xl p-2.5 font-bold"
+                    placeholder="0"
                   />
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">Bathrooms</label>
+                  <label className="font-bold block mb-1">
+                    Bathrooms <span className="text-gray-400 font-normal">(0 for plots, up to 50+)</span>
+                  </label>
                   <input
                     type="number"
-                    value={editingProperty.bathrooms || 3}
-                    onChange={(e) => setEditingProperty({ ...editingProperty, bathrooms: Number(e.target.value) })}
-                    className="w-full bg-gray-50 border rounded-xl p-2.5"
+                    min={0}
+                    max={100}
+                    value={editingProperty.bathrooms ?? 0}
+                    onChange={(e) =>
+                      setEditingProperty({
+                        ...editingProperty,
+                        bathrooms: Math.max(0, parseInt(e.target.value, 10) || 0),
+                      })
+                    }
+                    className="w-full bg-gray-50 border rounded-xl p-2.5 font-bold"
+                    placeholder="0"
                   />
                 </div>
+              </div>
+
+              {/* Detailed Property Description */}
+              <div>
+                <label className="font-bold block mb-1">Detailed Property Description *</label>
+                <textarea
+                  rows={3}
+                  value={editingProperty.description || ""}
+                  onChange={(e) => setEditingProperty({ ...editingProperty, description: e.target.value })}
+                  className="w-full bg-gray-50 border rounded-xl p-2.5 font-sans"
+                  placeholder="Describe property features, location benefits, nearby landmarks, road access, possession details..."
+                />
+              </div>
+
+              {/* Custom Note / Special Highlight Box */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold block text-amber-900 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Custom Note / Special Highlight (Fully Customizable)</span>
+                  </label>
+                  <span className="text-[10px] text-gray-400">Shows in highlight box on property page</span>
+                </div>
+                <textarea
+                  rows={2}
+                  value={editingProperty.custom_note || ""}
+                  onChange={(e) => setEditingProperty({ ...editingProperty, custom_note: e.target.value })}
+                  className="w-full bg-amber-50/60 border border-amber-300 rounded-xl p-2.5 font-sans text-xs focus:bg-white text-gray-800"
+                  placeholder="e.g. Direct Owner Registry, Double Street 30 Ft, Near Main Boulevard, Sweet Water Available, Urgent Cash Sale..."
+                />
+              </div>
+
+              {/* Key Features & Amenities */}
+              <div>
+                <label className="font-bold block mb-1">Key Features &amp; Amenities (Comma-separated)</label>
+                <input
+                  type="text"
+                  value={(editingProperty.features || []).join(", ")}
+                  onChange={(e) =>
+                    setEditingProperty({
+                      ...editingProperty,
+                      features: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  className="w-full bg-gray-50 border rounded-xl p-2.5"
+                  placeholder="e.g. Direct Registry, 30ft Double Road, Sweet Water, Electricity, Corner Plot"
+                />
               </div>
 
               <div className="space-y-1.5 pt-2">

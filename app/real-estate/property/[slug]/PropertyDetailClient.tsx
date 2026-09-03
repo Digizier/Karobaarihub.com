@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Send,
   Building2,
+  Sparkles,
 } from "lucide-react";
 import { Property } from "@/lib/types";
 import { createPropertyInquiry, getPropertyBySlug } from "@/lib/db";
@@ -195,15 +196,21 @@ export default function PropertyDetailClient({ property: initialProperty, slug: 
                   </div>
                   <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                     <span className="text-gray-400 block text-[10px]">Bedrooms</span>
-                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">{property.bedrooms} Beds</span>
+                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">
+                      {property.bedrooms > 0 ? `${property.bedrooms} Beds` : "0 (Plot / Land)"}
+                    </span>
                   </div>
                   <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                     <span className="text-gray-400 block text-[10px]">Bathrooms</span>
-                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">{property.bathrooms} Baths</span>
+                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">
+                      {property.bathrooms > 0 ? `${property.bathrooms} Baths` : "0 (Plot / Land)"}
+                    </span>
                   </div>
                   <div className="bg-white p-2.5 rounded-lg border border-gray-200">
                     <span className="text-gray-400 block text-[10px]">Kitchens</span>
-                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">{property.kitchens} Fitted</span>
+                    <span className="font-bold text-karobaari-darkGray text-xs sm:text-sm">
+                      {property.kitchens > 0 ? `${property.kitchens} Fitted` : "0 (Plot / Land)"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -234,6 +241,19 @@ export default function PropertyDetailClient({ property: initialProperty, slug: 
           {/* Left Description (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-6 shadow-xs">
+              {/* Custom Note / Highlight Box */}
+              {property.custom_note && (
+                <div className="mb-4 bg-amber-50/90 border border-amber-300 rounded-xl p-3.5 shadow-2xs">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs mb-1">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Special Property Note &amp; Highlights</span>
+                  </div>
+                  <p className="text-xs text-amber-950 leading-relaxed font-medium">
+                    {property.custom_note}
+                  </p>
+                </div>
+              )}
+
               <h2 className="font-serif font-bold text-base sm:text-lg text-karobaari-darkGray mb-2 pb-1.5 border-b border-gray-100">
                 Detailed Property Description
               </h2>

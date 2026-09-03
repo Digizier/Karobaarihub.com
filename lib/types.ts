@@ -83,6 +83,7 @@ export interface Property {
   is_featured: boolean;
   is_active: boolean;
   created_at?: string;
+  custom_note?: string;
 }
 
 export interface PropertyInquiry {

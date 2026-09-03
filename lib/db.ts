@@ -82,6 +82,15 @@ export function slugify(text?: string): string {
     .replace(/-+$/, "");
 }
 
+export function cleanPropertySlug(text?: string): string {
+  if (!text) return "";
+  let clean = text.replace(/https?:\/\/[^\s]+/gi, "").replace(/www\.[^\s]+/gi, "");
+  clean = clean.replace(/^(https?|youtube|youtu\.?be)[\w\-]*/gi, "");
+  const primary = clean.split("|")[0].trim();
+  clean = primary || clean;
+  return slugify(clean);
+}
+
 export function isValidUUID(id?: string): boolean {
   if (!id) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -778,6 +787,7 @@ export async function adminSaveProperty(property: Partial<Property>): Promise<Pr
         thumbnail_url: updatedProperty.thumbnail_url,
         features: updatedProperty.features || [],
         is_active: updatedProperty.is_active,
+        custom_note: updatedProperty.custom_note || "",
       };
       if (isValidUUID(updatedProperty.id)) {
         payload.id = updatedProperty.id;
