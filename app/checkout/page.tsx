@@ -44,6 +44,7 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [addressLabel, setAddressLabel] = useState<"Home" | "Office">("Home");
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "JazzCash" | "EasyPaisa" | "Bank Transfer">("COD");
+  const [transactionRef, setTransactionRef] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
 
   const [voucherInput, setVoucherInput] = useState("");
@@ -162,7 +163,10 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           payment_status: "Pending",
           order_status: "Pending",
-          customer_notes: customerNotes.trim() || undefined,
+          customer_notes: [
+            customerNotes.trim(),
+            transactionRef.trim() ? `[Payment TID/Sender: ${transactionRef.trim()}]` : "",
+          ].filter(Boolean).join(" | ") || undefined,
         },
         items.map((it) => ({
           product_id: it.product_id,
@@ -408,68 +412,150 @@ export default function CheckoutPage() {
                 )}
 
                 {/* JazzCash Option */}
-                <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
-                  paymentMethod === "JazzCash" ? "border-karobaari-maroon bg-red-50/60 font-bold text-karobaari-darkMaroon" : "border-gray-200"
-                }`}>
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "JazzCash"}
-                      onChange={() => setPaymentMethod("JazzCash")}
-                      className="text-karobaari-maroon"
-                    />
-                    <div>
-                      <span>JazzCash Mobile Account</span>
-                      <span className="text-[10px] text-gray-500 font-normal block">
-                        {siteSettings.jazzcash_number || "0335 9939702"} (Title: {siteSettings.jazzcash_title || "Karobaari Hub"})
-                      </span>
-                    </div>
-                  </div>
-                </label>
-
-                {/* EasyPaisa Option */}
-                <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
-                  paymentMethod === "EasyPaisa" ? "border-karobaari-maroon bg-red-50/60 font-bold text-karobaari-darkMaroon" : "border-gray-200"
-                }`}>
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentMethod === "EasyPaisa"}
-                      onChange={() => setPaymentMethod("EasyPaisa")}
-                      className="text-karobaari-maroon"
-                    />
-                    <div>
-                      <span>EasyPaisa Mobile Account</span>
-                      <span className="text-[10px] text-gray-500 font-normal block">
-                        {siteSettings.easypaisa_number || "0335 9939702"} (Title: {siteSettings.easypaisa_title || "Karobaari Hub"})
-                      </span>
-                    </div>
-                  </div>
-                </label>
-
-                {/* Bank Transfer Option */}
-                {siteSettings.bank_account_number && (
-                  <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
-                    paymentMethod === "Bank Transfer" ? "border-karobaari-maroon bg-red-50/60 font-bold text-karobaari-darkMaroon" : "border-gray-200"
+                <div className="space-y-2">
+                  <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                    paymentMethod === "JazzCash" ? "border-karobaari-maroon bg-red-50/70 font-bold text-karobaari-darkMaroon ring-1 ring-karobaari-maroon/20" : "border-gray-200 hover:bg-gray-50"
                   }`}>
                     <div className="flex items-center gap-2.5">
                       <input
                         type="radio"
                         name="payment"
-                        checked={paymentMethod === "Bank Transfer"}
-                        onChange={() => setPaymentMethod("Bank Transfer")}
+                        checked={paymentMethod === "JazzCash"}
+                        onChange={() => setPaymentMethod("JazzCash")}
                         className="text-karobaari-maroon"
                       />
                       <div>
-                        <span>Bank Direct Transfer ({siteSettings.bank_name || "Meezan Bank"})</span>
-                        <span className="text-[10px] text-gray-500 font-normal block">
-                          Title: {siteSettings.bank_account_title} | IBAN: {siteSettings.bank_account_number}
+                        <span className="text-xs font-bold text-gray-900 block">JazzCash Mobile Account</span>
+                        <span className="text-[10px] text-gray-500 font-normal">
+                          Instant mobile account transfer across Pakistan
                         </span>
                       </div>
                     </div>
+                    <span className="text-[10px] font-mono font-bold text-karobaari-maroon bg-white px-2 py-0.5 rounded border border-karobaari-maroon/20">
+                      {siteSettings.jazzcash_number || "0335 9939702"}
+                    </span>
                   </label>
+
+                  {paymentMethod === "JazzCash" && (
+                    <div className="p-3.5 bg-red-50/90 border border-red-200 rounded-xl space-y-2.5 text-xs animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] pb-2 border-b border-red-200/60">
+                        <span className="text-gray-600">Account Title: <strong className="text-gray-900">{siteSettings.jazzcash_title || "Karobaari Hub"}</strong></span>
+                        <span className="text-gray-600">Account Number: <strong className="text-karobaari-maroon font-mono text-xs">{siteSettings.jazzcash_number || "0335 9939702"}</strong></span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        Please send <strong>Rs. {totalAmount.toLocaleString()}</strong> via JazzCash App / *786# to the above account, then enter your Sender Number / TID below.
+                      </p>
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-gray-700">JazzCash Transaction ID (TID) / Sender Number *</label>
+                        <input
+                          type="text"
+                          value={transactionRef}
+                          onChange={(e) => setTransactionRef(e.target.value)}
+                          placeholder="e.g. TID: 1048291039 or 0335 9939702"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* EasyPaisa Option */}
+                <div className="space-y-2">
+                  <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                    paymentMethod === "EasyPaisa" ? "border-karobaari-maroon bg-red-50/70 font-bold text-karobaari-darkMaroon ring-1 ring-karobaari-maroon/20" : "border-gray-200 hover:bg-gray-50"
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === "EasyPaisa"}
+                        onChange={() => setPaymentMethod("EasyPaisa")}
+                        className="text-karobaari-maroon"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-gray-900 block">EasyPaisa Mobile Account</span>
+                        <span className="text-[10px] text-gray-500 font-normal">
+                          Instant mobile transfer from any EasyPaisa wallet
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                      {siteSettings.easypaisa_number || "0335 9939702"}
+                    </span>
+                  </label>
+
+                  {paymentMethod === "EasyPaisa" && (
+                    <div className="p-3.5 bg-emerald-50/90 border border-emerald-200 rounded-xl space-y-2.5 text-xs animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] pb-2 border-b border-emerald-200/60">
+                        <span className="text-gray-600">Account Title: <strong className="text-gray-900">{siteSettings.easypaisa_title || "Karobaari Hub"}</strong></span>
+                        <span className="text-gray-600">Account Number: <strong className="text-emerald-800 font-mono text-xs">{siteSettings.easypaisa_number || "0335 9939702"}</strong></span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        Please send <strong>Rs. {totalAmount.toLocaleString()}</strong> via EasyPaisa App / *786# to the above account, then enter your Sender Number / TID below.
+                      </p>
+                      <div>
+                        <label className="font-semibold block mb-1 text-[11px] text-gray-700">EasyPaisa Transaction ID (TID) / Sender Number *</label>
+                        <input
+                          type="text"
+                          value={transactionRef}
+                          onChange={(e) => setTransactionRef(e.target.value)}
+                          placeholder="e.g. TID: 2049182049 or 0335 9939702"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bank Transfer Option */}
+                {siteSettings.bank_account_number && (
+                  <div className="space-y-2">
+                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === "Bank Transfer" ? "border-karobaari-maroon bg-red-50/70 font-bold text-karobaari-darkMaroon ring-1 ring-karobaari-maroon/20" : "border-gray-200 hover:bg-gray-50"
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === "Bank Transfer"}
+                          onChange={() => setPaymentMethod("Bank Transfer")}
+                          className="text-karobaari-maroon"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-gray-900 block">Bank Direct Transfer ({siteSettings.bank_name || "Meezan Bank"})</span>
+                          <span className="text-[10px] text-gray-500 font-normal">
+                            Direct IBAN / Online mobile banking transfer
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200">
+                        {siteSettings.bank_name || "Bank Transfer"}
+                      </span>
+                    </label>
+
+                    {paymentMethod === "Bank Transfer" && (
+                      <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-xl space-y-2.5 text-xs animate-fadeIn">
+                        <div className="space-y-1 text-[11px] pb-2 border-b border-blue-200/60">
+                          <div>Bank: <strong className="text-gray-900">{siteSettings.bank_name || "Meezan Bank Limited"}</strong></div>
+                          <div>Account Title: <strong className="text-gray-900">{siteSettings.bank_account_title}</strong></div>
+                          <div>IBAN / Account: <strong className="text-blue-900 font-mono text-xs select-all">{siteSettings.bank_account_number}</strong></div>
+                        </div>
+                        <p className="text-[11px] text-gray-600 leading-relaxed">
+                          Please transfer <strong>Rs. {totalAmount.toLocaleString()}</strong> to the above official bank account, then enter your Transfer Reference or Sender Account Title below.
+                        </p>
+                        <div>
+                          <label className="font-semibold block mb-1 text-[11px] text-gray-700">Bank Reference Number / Sender Name *</label>
+                          <input
+                            type="text"
+                            value={transactionRef}
+                            onChange={(e) => setTransactionRef(e.target.value)}
+                            placeholder="e.g. Ref: 98124982 or Sender Name"
+                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

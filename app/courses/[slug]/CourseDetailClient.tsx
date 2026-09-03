@@ -4,9 +4,15 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useParams } from "next/navigation";
-import { Clock, Layers, GraduationCap, CheckCircle2, ArrowLeft, PhoneCall, PlayCircle, BookOpen } from "lucide-react";
+import { Clock, Layers, GraduationCap, CheckCircle2, ArrowLeft, PhoneCall, PlayCircle, X } from "lucide-react";
 import { Course } from "@/lib/types";
 import { getCourseBySlug } from "@/lib/db";
+
+function getYouTubeVideoId(url?: string | null): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|watch\?.+&v=))([\w-]{11})/);
+  return match ? match[1] : null;
+}
 
 interface CourseDetailClientProps {
   course?: Course | null;
@@ -20,6 +26,7 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
 
   const [course, setCourse] = useState<Course | null>(initialCourse || null);
   const [loading, setLoading] = useState(!initialCourse);
+  const [isPlayingVideo, setIsPlayingVideo] = useState(false);
 
   useEffect(() => {
     if (initialCourse && (!activeSlug || initialCourse.slug === activeSlug)) {
@@ -67,10 +74,17 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
     );
   }
 
-  const currentPrice = course.sale_price ?? course.price;
+  const isSale = typeof course.sale_price === "number" && course.sale_price < course.price;
+  const currentPrice = isSale ? course.sale_price! : course.price;
+  const discountPercent = isSale
+    ? Math.round(((course.price - course.sale_price!) / course.price) * 100)
+    : null;
+
   const whatsappMsg = encodeURIComponent(
     `Hello Karobaari Hub Academy, I want to enroll in the course: "${course.title}" (Rs. ${currentPrice}).`
   );
+
+  const videoId = getYouTubeVideoId(course.youtube_url);
 
   return (
     <div className="bg-gray-50 min-h-screen py-4 sm:py-10 w-full overflow-hidden">
@@ -80,31 +94,57 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
         </Link>
 
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-8 shadow-xs space-y-4 sm:space-y-6">
-          {course.youtube_url ? (
-            <a
-              href={course.youtube_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full group cursor-pointer shadow-md"
-            >
-              <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-300" />
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/25 flex flex-col items-center justify-center transition-colors">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
-                  <PlayCircle className="w-8 h-8 sm:w-9 sm:h-9" />
-                </div>
-                <span className="mt-2.5 text-[11px] sm:text-xs font-bold text-white bg-black/75 px-3.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow">
-                  <span>Watch Video Course on YouTube</span> &rarr;
-                </span>
+          {/* VIDEO / HERO THUMBNAIL */}
+          {course.youtube_url && videoId ? (
+            isPlayingVideo ? (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-gray-200 w-full shadow-lg">
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+                  title={course.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsPlayingVideo(false)}
+                  className="absolute top-3 right-3 bg-black/80 hover:bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-md z-20"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Close Video</span>
+                </button>
               </div>
-            </a>
+            ) : (
+              <div
+                onClick={() => setIsPlayingVideo(true)}
+                className="block relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full group cursor-pointer shadow-md"
+              >
+                <Image
+                  src={course.thumbnail_url || "/assets/course-thumb.jpeg"}
+                  alt={course.title || "Course"}
+                  fill
+                  unoptimized
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/25 flex flex-col items-center justify-center transition-colors">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform">
+                    <PlayCircle className="w-8 h-8 sm:w-9 sm:h-9" />
+                  </div>
+                  <span className="mt-2.5 text-[11px] sm:text-xs font-bold text-white bg-black/75 px-3.5 py-1 rounded-full backdrop-blur-xs flex items-center gap-1.5 shadow">
+                    <span>Click to Play Video Directly on Website</span>
+                  </span>
+                </div>
+              </div>
+            )
           ) : (
             <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 border border-gray-200 w-full">
-              <Image src={course.thumbnail_url || "/assets/course-thumb.jpeg"} alt={course.title || "Course"} fill unoptimized className="object-cover" />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 text-karobaari-maroon flex items-center justify-center shadow-xl">
-                  <PlayCircle className="w-7 h-7 sm:w-8 sm:h-8" />
-                </div>
-              </div>
+              <Image
+                src={course.thumbnail_url || "/assets/course-thumb.jpeg"}
+                alt={course.title || "Course"}
+                fill
+                unoptimized
+                className="object-cover"
+              />
             </div>
           )}
 
@@ -123,7 +163,17 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
               <span className="flex items-center gap-1"><GraduationCap className="w-3.5 h-3.5 text-purple-700" /> Lessons: <strong>{course.lessons_count}</strong></span>
             </div>
 
-            <p className="text-gray-700 text-xs sm:text-sm leading-relaxed mb-4">{course.description}</p>
+            {/* SHORT SUMMARY */}
+            {course.short_description && (
+              <div className="p-3.5 sm:p-4 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs sm:text-sm text-gray-800 font-medium leading-relaxed my-3 shadow-2xs">
+                {course.short_description}
+              </div>
+            )}
+
+            {/* FULL DESCRIPTION */}
+            <div className="text-gray-700 text-xs sm:text-sm leading-relaxed mb-4 whitespace-pre-line">
+              {course.description}
+            </div>
 
             {course.curriculum && course.curriculum.length > 0 && (
               <div className="my-4 space-y-2.5">
@@ -144,21 +194,34 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
               </div>
             )}
 
+            {/* PRICING & ENROLLMENT */}
             <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-2xl sm:text-3xl font-serif font-extrabold text-karobaari-maroon">
-                {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
+              <div className="flex items-baseline gap-2">
+                <div className="text-2xl sm:text-3xl font-serif font-extrabold text-karobaari-maroon">
+                  {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
+                </div>
+                {isSale && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm sm:text-base text-gray-400 line-through">
+                      Rs. {course.price.toLocaleString()}
+                    </span>
+                    <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                      -{discountPercent}% OFF
+                    </span>
+                  </div>
+                )}
               </div>
+
               <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
-                {course.youtube_url && (
-                  <a
-                    href={course.youtube_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
+                {course.youtube_url && videoId && (
+                  <button
+                    type="button"
+                    onClick={() => setIsPlayingVideo(!isPlayingVideo)}
+                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
                   >
                     <PlayCircle className="w-4 h-4" />
-                    <span>Watch on YouTube</span>
-                  </a>
+                    <span>{isPlayingVideo ? "Hide Video" : "Watch Video on Site"}</span>
+                  </button>
                 )}
                 <a
                   href={`https://wa.me/923359939702?text=${whatsappMsg}`}

@@ -6,7 +6,9 @@ import { FileText, ArrowRight, Clock, Layers } from "lucide-react";
 import { DigitalBook, Course } from "@/lib/types";
 
 export function BookCard({ book }: { book: DigitalBook }) {
-  const currentPrice = book.sale_price ?? book.price;
+  const hasSale = typeof book.sale_price === "number" && book.sale_price > 0 && book.sale_price < book.price;
+  const currentPrice = hasSale ? book.sale_price! : book.price;
+  const discountPct = hasSale ? Math.round(((book.price - currentPrice) / book.price) * 100) : 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:shadow-md hover:border-karobaari-gold transition-all flex flex-col justify-between group w-full min-w-0 h-full">
@@ -22,6 +24,11 @@ export function BookCard({ book }: { book: DigitalBook }) {
           <div className="absolute top-1.5 left-1.5 bg-karobaari-maroon text-white text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded shadow">
             {book.category}
           </div>
+          {hasSale && (
+            <div className="absolute top-1.5 right-1.5 bg-red-600 text-white text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded shadow">
+              -{discountPct}% OFF
+            </div>
+          )}
           <div className="absolute bottom-1.5 right-1.5 bg-black/75 text-white text-[9px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded flex items-center gap-0.5">
             <FileText className="w-2.5 h-2.5 text-karobaari-gold" />
             <span>{book.file_format}</span>
@@ -40,11 +47,11 @@ export function BookCard({ book }: { book: DigitalBook }) {
 
       <div className="p-2.5 sm:p-3.5 pt-0">
         <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-1.5">
             <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
               {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
             </span>
-            {book.sale_price && (
+            {hasSale && (
               <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
                 Rs. {(book.price || 0).toLocaleString()}
               </span>

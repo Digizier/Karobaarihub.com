@@ -148,11 +148,12 @@ export function filterLocalProducts(list: Product[], params: ProductFilterParams
   let filtered = [...list].filter((p) => p.is_active !== false);
 
   if (params.categorySlug) {
-    const targetSlug = params.categorySlug.toLowerCase().trim();
+    const allCats = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
+    const matchingSlugs = getCategoryDescendantSlugs(params.categorySlug, allCats).map((s) => s.toLowerCase().trim());
     filtered = filtered.filter((p) => {
-      if (p.category_slug && p.category_slug.toLowerCase().trim() === targetSlug) return true;
-      if (p.category_name && slugify(p.category_name) === targetSlug) return true;
-      return false;
+      const pSlug = (p.category_slug || "").toLowerCase().trim();
+      const pNameSlug = slugify(p.category_name || "");
+      return matchingSlugs.includes(pSlug) || matchingSlugs.includes(pNameSlug);
     });
   }
   if (params.search) {
@@ -206,7 +207,15 @@ export async function getProducts(params: ProductFilterParams = {}): Promise<{ p
         .select("*", { count: "exact" })
         .eq("is_active", true);
 
-      if (params.categorySlug) query = query.eq("category_slug", params.categorySlug);
+      if (params.categorySlug) {
+        const allCats = await getCategories();
+        const matchingSlugs = getCategoryDescendantSlugs(params.categorySlug, allCats);
+        if (matchingSlugs.length === 1) {
+          query = query.eq("category_slug", matchingSlugs[0]);
+        } else if (matchingSlugs.length > 1) {
+          query = query.in("category_slug", matchingSlugs);
+        }
+      }
       if (params.flashSaleOnly) query = query.eq("is_flash_sale", true);
       if (params.featuredOnly) query = query.eq("is_featured", true);
       if (params.search) query = query.ilike("name", `%${params.search}%`);
@@ -529,8 +538,8 @@ export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & 
     id: inquiry.id || `inq_${Date.now()}`,
     customer_name: inquiry.customer_name,
     customer_phone: inquiry.customer_phone,
-    property_id: inquiry.property_id,
-    property_title: inquiry.property_title,
+    property_id: inquiry.property_id && isValidUUID(inquiry.property_id) ? inquiry.property_id : undefined,
+    property_title: inquiry.property_title || "General Customer Support / Contact Message",
     message: inquiry.message,
     preferred_visit_date: inquiry.preferred_visit_date,
     status: inquiry.status || "New",
@@ -541,8 +550,29 @@ export async function createPropertyInquiry(inquiry: Partial<PropertyInquiry> & 
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("property_inquiries").insert([inquiry]);
-    } catch {}
+      const payload: Record<string, any> = {
+        customer_name: inquiry.customer_name,
+        customer_phone: inquiry.customer_phone,
+        property_title: inquiry.property_title || "General Customer Support / Contact Message",
+        message: inquiry.message || "",
+        status: inquiry.status || "New",
+      };
+      if (inquiry.property_id && isValidUUID(inquiry.property_id)) {
+        payload.property_id = inquiry.property_id;
+      }
+      if (inquiry.preferred_visit_date) {
+        payload.preferred_visit_date = inquiry.preferred_visit_date;
+      }
+      const { data, error } = await supabase.from("property_inquiries").insert([payload]).select("id").single();
+      if (!error && data?.id) {
+        newInq.id = data.id;
+      }
+    } catch (err) {
+      console.error("Create inquiry error:", err);
+    }
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("kb_inquiries_updated"));
   }
   return { success: true };
 }
@@ -686,6 +716,8 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
         variants: cleanedVariants,
         images: updatedProduct.images || [],
         location_tag: updatedProduct.location_tag || "Punjab",
+        video_url: updatedProduct.video_url || null,
+        specifications: updatedProduct.specifications || {},
       };
       if (isValidUUID(updatedProduct.id)) {
         payload.id = updatedProduct.id;
@@ -1012,6 +1044,60 @@ export async function adminDeleteCourse(id: string): Promise<boolean> {
   return true;
 }
 
+// CATEGORY HIERARCHY HELPERS
+export function buildCategoryTree(categories: Category[]): Category[] {
+  const catMap = new Map<string, Category>();
+  const roots: Category[] = [];
+
+  categories.forEach((cat) => {
+    catMap.set(cat.id, { ...cat, children: [] });
+  });
+
+  categories.forEach((cat) => {
+    const mapped = catMap.get(cat.id)!;
+    if (cat.parent_id && catMap.has(cat.parent_id)) {
+      catMap.get(cat.parent_id)!.children!.push(mapped);
+    } else {
+      roots.push(mapped);
+    }
+  });
+
+  return roots;
+}
+
+export function getCategoryBreadcrumbs(categoryId: string, categories: Category[]): string {
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+  const path: string[] = [];
+  let curr = catMap.get(categoryId);
+  while (curr) {
+    path.unshift(curr.name);
+    curr = curr.parent_id ? catMap.get(curr.parent_id) : undefined;
+  }
+  return path.join(" > ");
+}
+
+export function getCategoryDescendantSlugs(categorySlug: string, categories: Category[]): string[] {
+  if (!categorySlug) return [];
+  const cleanTarget = categorySlug.toLowerCase().trim();
+  const targetCat = categories.find(
+    (c) => c.slug.toLowerCase().trim() === cleanTarget || slugify(c.name) === cleanTarget || c.id === categorySlug
+  );
+  if (!targetCat) return [categorySlug];
+
+  const resultSlugs: string[] = [targetCat.slug];
+
+  const gatherChildren = (parentId: string) => {
+    const children = categories.filter((c) => c.parent_id === parentId);
+    for (const child of children) {
+      resultSlugs.push(child.slug);
+      gatherChildren(child.id);
+    }
+  };
+
+  gatherChildren(targetCat.id);
+  return Array.from(new Set(resultSlugs));
+}
+
 // CATEGORIES CRUD
 export async function adminSaveCategory(category: Partial<Category>): Promise<Category> {
   const current = getLocal<Category>(STORAGE_KEYS.CATEGORIES, []);
@@ -1022,12 +1108,15 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
     updatedCat = {
       ...current.find((c) => c.id === category.id)!,
       ...category,
+      parent_id: category.parent_id || null,
       slug: derivedSlug,
     } as Category;
   } else {
     updatedCat = {
       id: isValidUUID(category.id) ? category.id! : generateUUID(),
       name: category.name || "New Category",
+      parent_id: category.parent_id || null,
+      description: category.description || "",
       image_url: category.image_url || "/assets/cloth-stand-1.jpeg",
       sort_order: category.sort_order ?? (current.length + 1),
       is_active: category.is_active ?? true,
@@ -1041,6 +1130,8 @@ export async function adminSaveCategory(category: Partial<Category>): Promise<Ca
       const payload: Record<string, any> = {
         name: updatedCat.name,
         slug: updatedCat.slug,
+        parent_id: updatedCat.parent_id || null,
+        description: updatedCat.description || "",
         image_url: updatedCat.image_url,
         sort_order: updatedCat.sort_order,
         is_active: updatedCat.is_active,
@@ -1464,7 +1555,7 @@ export async function adminSaveSiteSettings(settings: SiteSettings): Promise<Sit
         { key: "bank_account_number", value: settings.bank_account_number || "" },
       ];
       for (const entry of entries) {
-        await supabase.from("site_settings").upsert(entry);
+        await supabase.from("site_settings").upsert(entry, { onConflict: "key" });
       }
     } catch {}
   }

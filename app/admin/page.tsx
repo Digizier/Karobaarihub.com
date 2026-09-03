@@ -38,6 +38,11 @@ import {
   Truck,
   MapPin,
   Save,
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
+  FolderTree,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Product,
@@ -92,6 +97,8 @@ import {
   testSupabaseConnection,
   slugify,
   cleanPropertySlug,
+  getCategoryBreadcrumbs,
+  buildCategoryTree,
 } from "@/lib/db";
 import { initialSiteSettings } from "@/lib/mockData";
 
@@ -142,6 +149,13 @@ export default function AdminPage() {
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [editingOrder, setEditingOrder] = useState<Partial<Order> | null>(null);
   const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
+  const [adminCategorySearch, setAdminCategorySearch] = useState("");
+  const [expandedAdminCats, setExpandedAdminCats] = useState<Record<string, boolean>>({});
+  const [adminCategoryViewMode, setAdminCategoryViewMode] = useState<"tree" | "grid">("tree");
+
+  const toggleAdminCategoryExpand = (id: string) => {
+    setExpandedAdminCats((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -631,8 +645,10 @@ export default function AdminPage() {
                       thumbnail_url: "/assets/cloth-stand-1.jpeg",
                       images: [],
                       variants: [],
-                      is_featured: false,
+                      specifications: {},
+                      video_url: "",
                       is_flash_sale: false,
+                      is_featured: false,
                       is_active: true,
                     })
                   }
@@ -672,9 +688,19 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 px-4 text-gray-600">{p.category_name}</td>
                             <td className="py-3 px-4">
-                              <span className="font-bold text-karobaari-maroon">Rs. {p.price?.toLocaleString()}</span>
-                              {p.sale_price && (
-                                <span className="text-[10px] text-gray-400 line-through block">Rs. {p.sale_price}</span>
+                              {p.sale_price && p.sale_price < p.price ? (
+                                <div>
+                                  <span className="font-bold text-karobaari-maroon block">
+                                    Rs. {p.sale_price.toLocaleString()}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 line-through block">
+                                    Rs. {p.price.toLocaleString()}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="font-bold text-gray-900">
+                                  Rs. {p.price?.toLocaleString()}
+                                </span>
                               )}
                             </td>
                             <td className="py-3 px-4">
@@ -696,6 +722,8 @@ export default function AdminPage() {
                                       ...p,
                                       images: Array.isArray(p.images) ? p.images : [],
                                       variants: Array.isArray(p.variants) ? p.variants : [],
+                                      specifications: (p.specifications && typeof p.specifications === "object") ? p.specifications : {},
+                                      video_url: p.video_url || "",
                                     })
                                   }
                                   className="p-1 hover:bg-gray-100 rounded text-gray-600"
@@ -843,7 +871,29 @@ export default function AdminPage() {
                         <span className="text-[9px] bg-amber-50 text-amber-800 font-bold px-1.5 py-0.2 rounded">{b.category}</span>
                         <h4 className="font-bold text-xs text-gray-900 mt-1 line-clamp-1">{b.title}</h4>
                         <span className="text-[10px] text-gray-400 block">{b.author}</span>
-                        <span className="text-xs font-bold text-karobaari-maroon">Rs. {b.price}</span>
+                        {(() => {
+                          const hasSale = typeof b.sale_price === "number" && b.sale_price > 0 && b.sale_price < b.price;
+                          const activePrice = hasSale ? b.sale_price! : b.price;
+                          const regularPrice = b.price;
+                          const discountPct = hasSale ? Math.round(((regularPrice - activePrice) / regularPrice) * 100) : 0;
+                          return (
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              <span className="text-xs font-bold text-karobaari-maroon">
+                                Rs. {activePrice.toLocaleString()}
+                              </span>
+                              {hasSale && (
+                                <>
+                                  <span className="text-[10px] text-gray-400 line-through">
+                                    Rs. {regularPrice.toLocaleString()}
+                                  </span>
+                                  <span className="text-[9px] bg-red-100 text-red-700 font-bold px-1 rounded">
+                                    Save {discountPct}%
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -893,8 +943,14 @@ export default function AdminPage() {
                       <div>
                         <span className="text-[9px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.2 rounded">{c.level}</span>
                         <h4 className="font-bold text-xs text-gray-900 mt-1 line-clamp-1">{c.title}</h4>
-                        <span className="text-[10px] text-gray-500 block">{c.duration} &bull; {c.modules_count} Modules</span>
-                        <span className="text-xs font-bold text-karobaari-maroon">Rs. {c.price}</span>
+                        {c.sale_price && c.sale_price < c.price ? (
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <span className="text-xs font-bold text-karobaari-maroon">Rs. {c.sale_price.toLocaleString()}</span>
+                            <span className="text-[10px] text-gray-400 line-through">Rs. {c.price.toLocaleString()}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-karobaari-maroon">Rs. {c.price?.toLocaleString()}</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -1040,7 +1096,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                  <h3 className="font-serif font-bold text-sm text-gray-900">Property Inspection Leads &amp; Inquiries</h3>
+                  <h3 className="font-serif font-bold text-sm text-gray-900">Customer Inquiries &amp; Property Visit Leads ({inquiries.length})</h3>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1048,8 +1104,8 @@ export default function AdminPage() {
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200 text-gray-400 uppercase text-[10px] font-bold">
                         <th className="py-3 px-4">CLIENT NAME &amp; PHONE</th>
-                        <th className="py-3 px-4">PROPERTY</th>
-                        <th className="py-3 px-4">VISIT DATE</th>
+                        <th className="py-3 px-4">TYPE &amp; SUBJECT</th>
+                        <th className="py-3 px-4">DATE / SCHEDULE</th>
                         <th className="py-3 px-4">MESSAGE</th>
                         <th className="py-3 px-4">STATUS</th>
                         <th className="py-3 px-4 text-right">ACTIONS</th>
@@ -1064,11 +1120,16 @@ export default function AdminPage() {
                               {inq.customer_phone}
                             </a>
                           </td>
-                          <td className="py-3 px-4 text-gray-800 font-medium max-w-xs truncate">
-                            {inq.property_title}
+                          <td className="py-3 px-4 text-gray-800 font-medium max-w-xs">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${inq.property_id ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"}`}>
+                                {inq.property_id ? "Property Visit" : "General Support"}
+                              </span>
+                              <span className="truncate block font-semibold text-xs text-gray-900">{inq.property_title || "Customer Inquiry"}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-4 font-mono text-[11px] text-gray-500">
-                            {inq.preferred_visit_date || "Anytime"}
+                            {inq.preferred_visit_date || (inq.property_id ? "Anytime" : "Direct Web Lead")}
                           </td>
                           <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{inq.message || "-"}</td>
                           <td className="py-3 px-4">
@@ -1117,48 +1178,575 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 8: CATEGORIES */}
-          {activeTab === "categories" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-                <h3 className="font-serif font-bold text-sm text-gray-900">Categories &amp; Curated Collections ({categories.length})</h3>
-                <button
-                  onClick={() =>
-                    setEditingCategory({
-                      name: "",
-                      slug: "",
-                      image_url: "/assets/cloth-stand-1.jpeg",
-                      sort_order: categories.length + 1,
-                      is_active: true,
-                    })
-                  }
-                  className="bg-karobaari-maroon text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" /> Add Category
-                </button>
-              </div>
+          {/* TAB 8: CATEGORIES & HIERARCHY */}
+          {activeTab === "categories" && (() => {
+            const countDescendants = (cat: Category): number => {
+              if (!cat.children || cat.children.length === 0) return 0;
+              return cat.children.reduce((acc, child) => acc + 1 + countDescendants(child), 0);
+            };
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.map((cat) => (
-                  <div key={cat.id} className="bg-white rounded-2xl border border-gray-200 p-3 shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative w-10 h-10 rounded-full bg-gray-100 overflow-hidden border shrink-0">
-                        <Image src={cat.image_url || "/assets/cloth-stand-1.jpeg"} alt={cat.name} fill unoptimized className="object-cover" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs text-gray-900 truncate">{cat.name}</h4>
-                        <span className="text-[10px] text-gray-400 font-mono block truncate">/{cat.slug}</span>
-                      </div>
+            const fullTree = buildCategoryTree(categories);
+
+            const filterTree = (nodes: Category[], query: string): Category[] => {
+              if (!query.trim()) return nodes;
+              const q = query.toLowerCase().trim();
+              const filterNode = (node: Category): Category | null => {
+                const matches = node.name.toLowerCase().includes(q) || node.slug.toLowerCase().includes(q);
+                const filteredChildren = (node.children || [])
+                  .map(filterNode)
+                  .filter((n): n is Category => n !== null);
+                if (matches || filteredChildren.length > 0) {
+                  return { ...node, children: filteredChildren };
+                }
+                return null;
+              };
+              return nodes.map(filterNode).filter((n): n is Category => n !== null);
+            };
+
+            const displayTree = filterTree(fullTree, adminCategorySearch);
+            const mainCategoriesCount = categories.filter((c) => !c.parent_id).length;
+            const subCategoriesCount = categories.filter((c) => !!c.parent_id).length;
+
+            const handleExpandAll = () => {
+              const allExpanded: Record<string, boolean> = {};
+              categories.forEach((c) => {
+                allExpanded[c.id] = true;
+              });
+              setExpandedAdminCats(allExpanded);
+            };
+
+            const handleCollapseAll = () => {
+              setExpandedAdminCats({});
+            };
+
+            return (
+              <div className="space-y-4">
+                {/* Header & Controls Bar */}
+                <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <FolderTree className="w-5 h-5 text-karobaari-maroon" />
+                      <h3 className="font-serif font-bold text-base text-gray-900">
+                        Department &amp; Category Hierarchy
+                      </h3>
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => setEditingCategory({ ...cat })} className="p-1 hover:bg-gray-100 rounded text-gray-600"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => setDeleteModal({ isOpen: true, type: "category", id: cat.id, title: cat.name })} className="p-1 hover:bg-red-50 rounded text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      <strong className="text-gray-800">{mainCategoriesCount}</strong> Main Departments •{" "}
+                      <strong className="text-karobaari-maroon">{subCategoriesCount}</strong> Subcategories (
+                      {categories.length} Total)
+                    </p>
                   </div>
-                ))}
+
+                  <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-between md:justify-end">
+                    {/* Search Input */}
+                    <div className="relative flex-1 md:w-64">
+                      <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search categories or slugs..."
+                        value={adminCategorySearch}
+                        onChange={(e) => setAdminCategorySearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                      />
+                    </div>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center bg-gray-100 p-0.5 rounded-xl border border-gray-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setAdminCategoryViewMode("tree")}
+                        className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                          adminCategoryViewMode === "tree"
+                            ? "bg-white text-karobaari-maroon shadow-xs"
+                            : "text-gray-600 hover:text-gray-900"
+                        }`}
+                        title="Hierarchical Tree View"
+                      >
+                        <FolderTree className="w-3.5 h-3.5" />
+                        <span>Tree View</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdminCategoryViewMode("grid")}
+                        className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                          adminCategoryViewMode === "grid"
+                            ? "bg-white text-karobaari-maroon shadow-xs"
+                            : "text-gray-600 hover:text-gray-900"
+                        }`}
+                        title="Flat Grid View"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>Flat Grid</span>
+                      </button>
+                    </div>
+
+                    {/* Expand/Collapse All (only for tree view) */}
+                    {adminCategoryViewMode === "tree" && (
+                      <div className="hidden sm:flex items-center gap-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={handleExpandAll}
+                          className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg border border-gray-200 font-semibold cursor-pointer"
+                        >
+                          Expand All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCollapseAll}
+                          className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg border border-gray-200 font-semibold cursor-pointer"
+                        >
+                          Collapse All
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Add Main Category */}
+                    <button
+                      onClick={() =>
+                        setEditingCategory({
+                          name: "",
+                          slug: "",
+                          parent_id: null,
+                          image_url: "/assets/cloth-stand-1.jpeg",
+                          sort_order: categories.length + 1,
+                          is_active: true,
+                        })
+                      }
+                      className="bg-karobaari-maroon text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 hover:bg-karobaari-darkMaroon cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Main Department</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* VIEW 1: HIERARCHICAL TREE VIEW (Primary & Highly Structured) */}
+                {adminCategoryViewMode === "tree" && (
+                  <div className="space-y-3.5">
+                    {displayTree.map((root) => {
+                      const descCount = countDescendants(root);
+                      const isExpanded = expandedAdminCats[root.id] ?? (descCount > 0 || Boolean(adminCategorySearch));
+
+                      return (
+                        <div
+                          key={root.id}
+                          className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs hover:border-gray-300 transition-all"
+                        >
+                          {/* ROOT CATEGORY MASTER ROW */}
+                          <div className="p-3 sm:p-4 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {/* Expand/Collapse Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => toggleAdminCategoryExpand(root.id)}
+                                className={`p-1.5 rounded-lg text-gray-400 hover:text-karobaari-maroon hover:bg-gray-100 transition-colors cursor-pointer ${
+                                  descCount === 0 ? "opacity-30 cursor-default" : ""
+                                }`}
+                                disabled={descCount === 0}
+                                title={isExpanded ? "Collapse subcategories" : "Expand subcategories"}
+                              >
+                                <ChevronDown
+                                  className={`w-4 h-4 transition-transform duration-200 ${
+                                    isExpanded ? "rotate-180 text-karobaari-maroon" : ""
+                                  }`}
+                                />
+                              </button>
+
+                              {/* Thumbnail */}
+                              <div className="relative w-11 h-11 rounded-xl bg-gray-100 overflow-hidden border border-gray-200 shrink-0 shadow-2xs">
+                                <Image
+                                  src={root.image_url || "/assets/cloth-stand-1.jpeg"}
+                                  alt={root.name}
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
+                              </div>
+
+                              {/* Details */}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[9px] font-bold bg-purple-50 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-md">
+                                    Main Department
+                                  </span>
+                                  {descCount > 0 ? (
+                                    <span className="text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">
+                                      {descCount} Subcategories
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] text-gray-400 font-medium italic">
+                                      0 subcategories
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="font-bold text-sm text-gray-900 truncate mt-0.5">
+                                  {root.name}
+                                </h4>
+                                <span className="text-[11px] text-gray-400 font-mono block truncate">
+                                  /{root.slug}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Actions on Root Category */}
+                            <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingCategory({
+                                    name: "",
+                                    slug: "",
+                                    parent_id: root.id,
+                                    image_url: "/assets/cloth-stand-1.jpeg",
+                                    sort_order: categories.length + 1,
+                                    is_active: true,
+                                  })
+                                }
+                                className="text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-1 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-xl transition-colors cursor-pointer border border-red-100"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add Subcategory</span>
+                              </button>
+                              <button
+                                onClick={() => setEditingCategory({ ...root })}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-600 cursor-pointer"
+                                title="Edit Main Department"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setDeleteModal({
+                                    isOpen: true,
+                                    type: "category",
+                                    id: root.id,
+                                    title: root.name,
+                                  })
+                                }
+                                className="p-1.5 hover:bg-red-50 rounded-lg text-red-600 cursor-pointer"
+                                title="Delete Main Department"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* NESTED SUBCATEGORIES TREE (Directly under parent) */}
+                          {isExpanded && (
+                            <div className="bg-slate-50/60 p-3 sm:p-4 space-y-2 border-t border-gray-100">
+                              {root.children && root.children.length > 0 ? (
+                                <div className="space-y-2.5">
+                                  {root.children.map((sub1) => {
+                                    const sub1DescCount = countDescendants(sub1);
+                                    return (
+                                      <div
+                                        key={sub1.id}
+                                        className="bg-white rounded-xl border border-gray-200 p-3 shadow-2xs space-y-2"
+                                      >
+                                        {/* Level 1 Subcategory Row */}
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <CornerDownRight className="w-4 h-4 text-karobaari-maroon/70 shrink-0" />
+                                            <div className="relative w-8 h-8 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
+                                              <Image
+                                                src={sub1.image_url || "/assets/cloth-stand-1.jpeg"}
+                                                alt={sub1.name}
+                                                fill
+                                                unoptimized
+                                                className="object-cover"
+                                              />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded">
+                                                  Subcategory (Level 2)
+                                                </span>
+                                                {sub1DescCount > 0 && (
+                                                  <span className="text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded">
+                                                    {sub1DescCount} nested
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <h5 className="font-bold text-xs text-gray-900 truncate">
+                                                {sub1.name}
+                                              </h5>
+                                              <span className="text-[10px] text-gray-400 font-mono block truncate">
+                                                /{sub1.slug}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setEditingCategory({
+                                                  name: "",
+                                                  slug: "",
+                                                  parent_id: sub1.id,
+                                                  image_url: "/assets/cloth-stand-1.jpeg",
+                                                  sort_order: categories.length + 1,
+                                                  is_active: true,
+                                                })
+                                              }
+                                              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-0.5 border border-blue-100"
+                                            >
+                                              <Plus className="w-3 h-3" />
+                                              <span>Add Child</span>
+                                            </button>
+                                            <button
+                                              onClick={() => setEditingCategory({ ...sub1 })}
+                                              className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                                              title="Edit Subcategory"
+                                            >
+                                              <Edit2 className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                setDeleteModal({
+                                                  isOpen: true,
+                                                  type: "category",
+                                                  id: sub1.id,
+                                                  title: sub1.name,
+                                                })
+                                              }
+                                              className="p-1 hover:bg-red-50 rounded text-red-600"
+                                              title="Delete Subcategory"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Level 2 Sub-subcategories (Grandchildren) */}
+                                        {sub1.children && sub1.children.length > 0 && (
+                                          <div className="ml-6 pl-3 border-l-2 border-karobaari-maroon/30 space-y-2 pt-1">
+                                            {sub1.children.map((sub2) => (
+                                              <div
+                                                key={sub2.id}
+                                                className="bg-gray-50/80 rounded-lg p-2 border border-gray-200/80 space-y-1.5"
+                                              >
+                                                <div className="flex items-center justify-between gap-2">
+                                                  <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="text-karobaari-maroon font-bold text-xs">↳</span>
+                                                    <div className="min-w-0">
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span className="text-[8px] font-bold bg-sky-50 text-sky-800 border border-sky-200 px-1 py-0.2 rounded">
+                                                          Level 3
+                                                        </span>
+                                                        <span className="font-bold text-xs text-gray-800 truncate">
+                                                          {sub2.name}
+                                                        </span>
+                                                      </div>
+                                                      <span className="text-[9px] text-gray-400 font-mono block truncate">
+                                                        /{sub2.slug}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+
+                                                  <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        setEditingCategory({
+                                                          name: "",
+                                                          slug: "",
+                                                          parent_id: sub2.id,
+                                                          image_url: "/assets/cloth-stand-1.jpeg",
+                                                          sort_order: categories.length + 1,
+                                                          is_active: true,
+                                                        })
+                                                      }
+                                                      className="text-[10px] font-bold text-gray-700 hover:text-karobaari-maroon bg-white hover:bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 cursor-pointer flex items-center gap-0.5"
+                                                    >
+                                                      <Plus className="w-2.5 h-2.5" />
+                                                      <span>Add Level 4</span>
+                                                    </button>
+                                                    <button
+                                                      onClick={() => setEditingCategory({ ...sub2 })}
+                                                      className="p-1 hover:bg-gray-200 rounded text-gray-600"
+                                                    >
+                                                      <Edit2 className="w-3 h-3" />
+                                                    </button>
+                                                    <button
+                                                      onClick={() =>
+                                                        setDeleteModal({
+                                                          isOpen: true,
+                                                          type: "category",
+                                                          id: sub2.id,
+                                                          title: sub2.name,
+                                                        })
+                                                      }
+                                                      className="p-1 hover:bg-red-50 rounded text-red-600"
+                                                    >
+                                                      <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+
+                                                {/* Level 3 (Great-grandchildren) */}
+                                                {sub2.children && sub2.children.length > 0 && (
+                                                  <div className="ml-4 pl-2 border-l border-gray-300 space-y-1">
+                                                    {sub2.children.map((sub3) => (
+                                                      <div
+                                                        key={sub3.id}
+                                                        className="flex items-center justify-between p-1 rounded hover:bg-white text-[11px]"
+                                                      >
+                                                        <div className="flex items-center gap-1 min-w-0">
+                                                          <span className="text-gray-400 text-[10px]">↳</span>
+                                                          <span className="text-[8px] bg-gray-100 text-gray-600 px-1 rounded">
+                                                            Level 4
+                                                          </span>
+                                                          <span className="font-medium text-gray-700 truncate">
+                                                            {sub3.name}
+                                                          </span>
+                                                          <span className="text-[9px] text-gray-400 font-mono">
+                                                            /{sub3.slug}
+                                                          </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                          <button
+                                                            onClick={() => setEditingCategory({ ...sub3 })}
+                                                            className="p-0.5 text-gray-500 hover:text-gray-900"
+                                                          >
+                                                            <Edit2 className="w-2.5 h-2.5" />
+                                                          </button>
+                                                          <button
+                                                            onClick={() =>
+                                                              setDeleteModal({
+                                                                isOpen: true,
+                                                                type: "category",
+                                                                id: sub3.id,
+                                                                title: sub3.name,
+                                                              })
+                                                            }
+                                                            className="p-0.5 text-red-500 hover:text-red-700"
+                                                          >
+                                                            <Trash2 className="w-2.5 h-2.5" />
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-white rounded-xl border border-dashed border-gray-300 flex items-center justify-between text-xs">
+                                  <span className="text-gray-400 italic">
+                                    No subcategories added under &ldquo;{root.name}&rdquo; yet.
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingCategory({
+                                        name: "",
+                                        slug: "",
+                                        parent_id: root.id,
+                                        image_url: "/assets/cloth-stand-1.jpeg",
+                                        sort_order: categories.length + 1,
+                                        is_active: true,
+                                      })
+                                    }
+                                    className="text-karobaari-maroon font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add First Subcategory</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* VIEW 2: FLAT GRID VIEW (Fallback) */}
+                {adminCategoryViewMode === "grid" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {categories.map((cat) => {
+                      const parentCat = cat.parent_id ? categories.find((c) => c.id === cat.parent_id) : null;
+                      const breadcrumb = getCategoryBreadcrumbs(cat.id, categories);
+                      const subCount = categories.filter((c) => c.parent_id === cat.id).length;
+
+                      return (
+                        <div key={cat.id} className="bg-white rounded-2xl border border-gray-200 p-3.5 shadow-xs flex flex-col justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="relative w-12 h-12 rounded-xl bg-gray-100 overflow-hidden border shrink-0">
+                              <Image src={cat.image_url || "/assets/cloth-stand-1.jpeg"} alt={cat.name} fill unoptimized className="object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                {parentCat ? (
+                                  <span className="text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded truncate max-w-[140px]">
+                                    Sub of: {parentCat.name}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.5 rounded">
+                                    Main Category
+                                  </span>
+                                )}
+                                {subCount > 0 && (
+                                  <span className="text-[9px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                                    {subCount} subs
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-bold text-xs text-gray-900 truncate" title={breadcrumb || cat.name}>
+                                {cat.name}
+                              </h4>
+                              {parentCat && (
+                                <span className="text-[10px] text-karobaari-maroon font-semibold block truncate">
+                                  {breadcrumb}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-gray-400 font-mono block truncate">/{cat.slug}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingCategory({
+                                  name: "",
+                                  slug: "",
+                                  parent_id: cat.id,
+                                  image_url: "/assets/cloth-stand-1.jpeg",
+                                  sort_order: categories.length + 1,
+                                  is_active: true,
+                                })
+                              }
+                              className="text-[11px] font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-1 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Add Subcategory</span>
+                            </button>
+                            <div className="flex gap-1">
+                              <button onClick={() => setEditingCategory({ ...cat })} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-600" title="Edit Category">
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setDeleteModal({ isOpen: true, type: "category", id: cat.id, title: cat.name })} className="p-1.5 hover:bg-red-50 rounded-lg text-red-600" title="Delete Category">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 9: VOUCHERS */}
           {activeTab === "vouchers" && (
@@ -1578,11 +2166,17 @@ export default function AdminPage() {
                         category_name: c?.name || "General",
                       });
                     }}
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-medium"
                   >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.slug}>{c.name}</option>
-                    ))}
+                    <option value="">-- Select Category --</option>
+                    {categories.map((c) => {
+                      const breadcrumb = getCategoryBreadcrumbs(c.id, categories);
+                      return (
+                        <option key={c.id} value={c.slug}>
+                          {breadcrumb || c.name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -1637,6 +2231,20 @@ export default function AdminPage() {
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
                     placeholder="e.g. Islamabad, Punjab"
                   />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="font-semibold block mb-1">Product YouTube Video URL (Optional)</label>
+                  <input
+                    type="url"
+                    value={editingProduct.video_url || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, video_url: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-mono text-xs"
+                    placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                  />
+                  <span className="text-[10px] text-gray-400 block mt-1">
+                    Adds an interactive product video directly in the photo gallery on the product page.
+                  </span>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -1775,106 +2383,380 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between border-b pb-1">
-                <h4 className="font-bold text-sm text-gray-900">3. Advanced Size &amp; Color Variants Builder</h4>
+            {/* 3. INDEPENDENT COLOR & SIZE VARIANT BUILDERS */}
+            <div className="space-y-4 pt-2 border-t">
+              <div>
+                <h4 className="font-bold text-sm text-gray-900">3. Independent Color &amp; Size Variants</h4>
+                <p className="text-[11px] text-gray-500">
+                  Manage Color Variants and Size Variants separately. Easily assign distinct prices or sync all prices with one click.
+                </p>
+              </div>
+
+              {/* A. COLOR VARIANTS BUILDER (Colors only, no price/stock) */}
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600" />
+                    <div>
+                      <h5 className="font-bold text-xs text-gray-900">Color Variants (Color Options Only)</h5>
+                      <span className="text-[10px] text-gray-400">Colors have no independent prices; pricing is controlled by Size / Base Product.</span>
+                    </div>
+                    <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded ml-1">
+                      {((editingProduct.variants || []).filter((v) => v.type === "color")).length} Colors
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentVars = editingProduct.variants || [];
+                      const colorCount = currentVars.filter((v) => v.type === "color").length;
+                      const newVar: ProductVariant = {
+                        id: `col_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                        product_id: editingProduct.id || "",
+                        name: colorCount === 0 ? "Black" : colorCount === 1 ? "Maroon" : colorCount === 2 ? "Navy Blue" : colorCount === 3 ? "White" : `Color ${colorCount + 1}`,
+                        type: "color",
+                        price: 0,
+                        stock: 0,
+                        is_active: true,
+                      };
+                      setEditingProduct({ ...editingProduct, variants: [...currentVars, newVar] });
+                    }}
+                    className="text-xs text-rose-700 hover:text-rose-900 font-bold flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg cursor-pointer transition-colors shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Color
+                  </button>
+                </div>
+
+                {((editingProduct.variants || []).filter((v) => v.type === "color")).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {((editingProduct.variants || []).map((v, idx) => {
+                      if (v.type !== "color") return null;
+                      return (
+                        <div key={v.id || idx} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-2xs">
+                          <span className="w-3 h-3 rounded-full bg-gray-400 shrink-0 border border-gray-300" />
+                          <input
+                            type="text"
+                            value={v.name}
+                            onChange={(e) => {
+                              const updated = [...editingProduct.variants!];
+                              updated[idx].name = e.target.value;
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="w-full bg-gray-50 border rounded-lg px-2 py-1.5 font-bold text-xs text-gray-800"
+                            placeholder="e.g. Maroon, Black"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = editingProduct.variants!.filter((_, i) => i !== idx);
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold cursor-pointer shrink-0"
+                            title="Remove Color"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    }))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 italic">No color variants added. Click &quot;+ Add Color&quot; if this product has multiple colors.</p>
+                )}
+              </div>
+
+              {/* B. SIZE VARIANTS BUILDER */}
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                    <h5 className="font-bold text-xs text-gray-900">Size Variants</h5>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded">
+                      {((editingProduct.variants || []).filter((v) => v.type === "size")).length} Sizes
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {((editingProduct.variants || []).filter((v) => v.type === "size")).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const basePrice = editingProduct.price || 0;
+                          const baseSale = editingProduct.sale_price;
+                          const updated = (editingProduct.variants || []).map((v) =>
+                            v.type === "size" ? { ...v, price: basePrice, sale_price: baseSale } : v
+                          );
+                          setEditingProduct({ ...editingProduct, variants: updated });
+                        }}
+                        className="text-[10px] font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 px-2 py-1 rounded-lg shadow-xs cursor-pointer"
+                      >
+                        Link Prices to Rs. {(editingProduct.sale_price || editingProduct.price || 0).toLocaleString()}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentVars = editingProduct.variants || [];
+                        const sizeCount = currentVars.filter((v) => v.type === "size").length;
+                        const newVar: ProductVariant = {
+                          id: `sz_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                          product_id: editingProduct.id || "",
+                          name: sizeCount === 0 ? "Small" : sizeCount === 1 ? "Medium" : sizeCount === 2 ? "Large" : `Size ${sizeCount + 1}`,
+                          type: "size",
+                          price: editingProduct.price || 0,
+                          sale_price: editingProduct.sale_price,
+                          stock: 10,
+                          is_active: true,
+                        };
+                        setEditingProduct({ ...editingProduct, variants: [...currentVars, newVar] });
+                      }}
+                      className="text-xs text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Size Variant
+                    </button>
+                  </div>
+                </div>
+
+                {((editingProduct.variants || []).filter((v) => v.type === "size")).length > 0 ? (
+                  <div className="space-y-2">
+                    {((editingProduct.variants || []).map((v, idx) => {
+                      if (v.type !== "size") return null;
+                      return (
+                        <div key={v.id || idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-white p-2.5 rounded-xl border border-gray-200 items-center">
+                          <div className="sm:col-span-4">
+                            <span className="text-[10px] text-gray-400 block font-semibold">Size Name</span>
+                            <input
+                              type="text"
+                              value={v.name}
+                              onChange={(e) => {
+                                const updated = [...editingProduct.variants!];
+                                updated[idx].name = e.target.value;
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="w-full bg-gray-50 border rounded-lg p-1.5 font-bold text-xs"
+                              placeholder="e.g. Small, 256 GB, 5 Marla"
+                            />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <span className="text-[10px] text-gray-400 block font-semibold">Regular Price (PKR) *</span>
+                            <input
+                              type="number"
+                              value={v.price || ""}
+                              onChange={(e) => {
+                                const updated = [...editingProduct.variants!];
+                                updated[idx].price = Number(e.target.value) || 0;
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="w-full bg-gray-50 border rounded-lg p-1.5 text-xs font-bold"
+                            />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <span className="text-[10px] text-gray-400 block font-semibold">Sale Price (Optional)</span>
+                            <input
+                              type="number"
+                              value={v.sale_price || ""}
+                              onChange={(e) => {
+                                const updated = [...editingProduct.variants!];
+                                updated[idx].sale_price = e.target.value ? Number(e.target.value) : undefined;
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="w-full bg-gray-50 border rounded-lg p-1.5 text-xs font-bold text-karobaari-maroon"
+                              placeholder="Discount price"
+                            />
+                          </div>
+                          <div className="sm:col-span-1">
+                            <span className="text-[10px] text-gray-400 block font-semibold">Stock</span>
+                            <input
+                              type="number"
+                              value={v.stock ?? 10}
+                              onChange={(e) => {
+                                const updated = [...editingProduct.variants!];
+                                updated[idx].stock = Number(e.target.value) || 0;
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="w-full bg-gray-50 border rounded-lg p-1.5 text-xs"
+                            />
+                          </div>
+                          <div className="sm:col-span-1 flex items-center justify-end sm:pt-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = editingProduct.variants!.filter((_, i) => i !== idx);
+                                setEditingProduct({ ...editingProduct, variants: updated });
+                              }}
+                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold w-full flex items-center justify-center cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 italic">No size variants added yet. Click &quot;+ Add Size Variant&quot; if this product has sizes.</p>
+                )}
+              </div>
+
+              {/* C. OTHER / GENERAL VARIANTS (if any exist from earlier) */}
+              {((editingProduct.variants || []).filter((v) => v.type !== "color" && v.type !== "size")).length > 0 && (
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                  <h5 className="font-bold text-xs text-gray-700">Custom / Legacy Options</h5>
+                  {((editingProduct.variants || []).map((v, idx) => {
+                    if (v.type === "color" || v.type === "size") return null;
+                    return (
+                      <div key={v.id || idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-white p-2 rounded-xl border items-center">
+                        <div className="sm:col-span-4">
+                          <input
+                            type="text"
+                            value={v.name}
+                            onChange={(e) => {
+                              const updated = [...editingProduct.variants!];
+                              updated[idx].name = e.target.value;
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="w-full bg-gray-50 border rounded-lg p-1.5 font-bold text-xs"
+                          />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <input
+                            type="number"
+                            value={v.price || ""}
+                            onChange={(e) => {
+                              const updated = [...editingProduct.variants!];
+                              updated[idx].price = Number(e.target.value) || 0;
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="w-full bg-gray-50 border rounded-lg p-1.5 text-xs font-bold"
+                          />
+                        </div>
+                        <div className="sm:col-span-4">
+                          <input
+                            type="number"
+                            value={v.stock ?? 10}
+                            onChange={(e) => {
+                              const updated = [...editingProduct.variants!];
+                              updated[idx].stock = Number(e.target.value) || 0;
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="w-full bg-gray-50 border rounded-lg p-1.5 text-xs"
+                            placeholder="Stock"
+                          />
+                        </div>
+                        <div className="sm:col-span-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = editingProduct.variants!.filter((_, i) => i !== idx);
+                              setEditingProduct({ ...editingProduct, variants: updated });
+                            }}
+                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold w-full flex items-center justify-center cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. PRODUCT INFORMATION & KEY SPECIFICATIONS */}
+            <div className="space-y-3 pt-2 border-t">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-900">4. Product Information &amp; Key Specifications (Optional)</h4>
+                  <p className="text-[11px] text-gray-400">
+                    Add custom key/value specifications such as Material, Weight, Dimensions, Warranty, etc.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    const currentVars = editingProduct.variants || [];
-                    const newVar: ProductVariant = {
-                      id: `var_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                      product_id: editingProduct.id || "",
-                      name: "Option " + (currentVars.length + 1),
-                      price: editingProduct.sale_price || editingProduct.price || 999,
-                      sale_price: undefined,
-                      stock: 10,
-                      is_active: true,
-                    };
-                    setEditingProduct({ ...editingProduct, variants: [...currentVars, newVar] });
+                    const currentSpecs = { ...(editingProduct.specifications || {}) };
+                    const newKey = `Detail_${Date.now().toString().slice(-4)}`;
+                    currentSpecs[newKey] = "";
+                    setEditingProduct({ ...editingProduct, specifications: currentSpecs });
                   }}
-                  className="text-xs text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1 bg-purple-50 px-2.5 py-1 rounded-lg"
+                  className="text-xs text-amber-800 hover:text-amber-900 font-bold flex items-center gap-1 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Variant Row
+                  <Plus className="w-3.5 h-3.5" /> Add Specification Row
                 </button>
               </div>
 
-              {editingProduct.variants && editingProduct.variants.length > 0 ? (
+              {/* Quick Presets */}
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                <span className="text-gray-400 font-semibold">Quick add:</span>
+                {["Material", "Weight", "Dimensions", "Package Includes", "Warranty"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      const currentSpecs = { ...(editingProduct.specifications || {}) };
+                      if (currentSpecs[preset] === undefined) {
+                        currentSpecs[preset] = "";
+                        setEditingProduct({ ...editingProduct, specifications: currentSpecs });
+                      }
+                    }}
+                    className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-medium cursor-pointer"
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
+
+              {editingProduct.specifications && Object.keys(editingProduct.specifications).length > 0 ? (
                 <div className="space-y-2">
-                  {editingProduct.variants.map((v, idx) => (
-                    <div key={v.id || idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-gray-50 p-2.5 rounded-xl border items-center">
-                      <div className="sm:col-span-4">
-                        <span className="text-[10px] text-gray-400 block font-semibold">Variant Name</span>
-                        <input
-                          type="text"
-                          value={v.name}
-                          onChange={(e) => {
-                            const updated = [...editingProduct.variants!];
-                            updated[idx].name = e.target.value;
-                            setEditingProduct({ ...editingProduct, variants: updated });
-                          }}
-                          className="w-full bg-white border rounded-lg p-1.5 font-bold text-xs"
-                          placeholder="e.g. Black ( 256 )"
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <span className="text-[10px] text-gray-400 block font-semibold">Price (PKR) *</span>
-                        <input
-                          type="number"
-                          value={v.price || ""}
-                          onChange={(e) => {
-                            const updated = [...editingProduct.variants!];
-                            updated[idx].price = Number(e.target.value) || 0;
-                            setEditingProduct({ ...editingProduct, variants: updated });
-                          }}
-                          className="w-full bg-white border rounded-lg p-1.5 text-xs font-bold"
-                          placeholder="327565"
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <span className="text-[10px] text-gray-400 block font-semibold">Sale Price (Optional)</span>
-                        <input
-                          type="number"
-                          value={v.sale_price || ""}
-                          onChange={(e) => {
-                            const updated = [...editingProduct.variants!];
-                            updated[idx].sale_price = e.target.value ? Number(e.target.value) : undefined;
-                            setEditingProduct({ ...editingProduct, variants: updated });
-                          }}
-                          className="w-full bg-white border rounded-lg p-1.5 text-xs font-bold text-karobaari-maroon"
-                          placeholder="Optional discount"
-                        />
-                      </div>
-                      <div className="sm:col-span-1">
-                        <span className="text-[10px] text-gray-400 block font-semibold">Stock</span>
-                        <input
-                          type="number"
-                          value={v.stock ?? 10}
-                          onChange={(e) => {
-                            const updated = [...editingProduct.variants!];
-                            updated[idx].stock = Number(e.target.value) || 0;
-                            setEditingProduct({ ...editingProduct, variants: updated });
-                          }}
-                          className="w-full bg-white border rounded-lg p-1.5 text-xs"
-                        />
-                      </div>
-                      <div className="sm:col-span-1 flex items-center justify-end sm:pt-4">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = editingProduct.variants!.filter((_, i) => i !== idx);
-                            setEditingProduct({ ...editingProduct, variants: updated });
-                          }}
-                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold w-full flex items-center justify-center"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                  {Object.entries(editingProduct.specifications).map(([key, val], idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-200">
+                      <input
+                        type="text"
+                        value={key}
+                        onChange={(e) => {
+                          const newKey = e.target.value;
+                          const entries = Object.entries(editingProduct.specifications || {});
+                          const newSpecs: Record<string, string> = {};
+                          entries.forEach(([k, v], i) => {
+                            if (i === idx) {
+                              newSpecs[newKey] = val;
+                            } else {
+                              newSpecs[k] = v;
+                            }
+                          });
+                          setEditingProduct({ ...editingProduct, specifications: newSpecs });
+                        }}
+                        placeholder="Feature Name (e.g. Material)"
+                        className="w-1/3 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-gray-800"
+                      />
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => {
+                          const newVal = e.target.value;
+                          const current = { ...(editingProduct.specifications || {}) };
+                          current[key] = newVal;
+                          setEditingProduct({ ...editingProduct, specifications: current });
+                        }}
+                        placeholder="Value (e.g. 100% Pure Lawn, 500g, 10x8 Inches)"
+                        className="flex-1 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = { ...(editingProduct.specifications || {}) };
+                          delete current[key];
+                          setEditingProduct({ ...editingProduct, specifications: current });
+                        }}
+                        className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-bold cursor-pointer"
+                        title="Remove Specification"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-gray-400 italic">No custom variants added. Standard item option applies.</p>
+                <p className="text-[11px] text-gray-400 italic">No specifications added yet. Click &quot;Add Specification Row&quot; or quick buttons above.</p>
               )}
             </div>
 
@@ -2275,6 +3157,35 @@ export default function AdminPage() {
             </div>
 
             <div>
+              <label className="font-bold block mb-1">Parent Category (Optional)</label>
+              <select
+                value={editingCategory.parent_id || ""}
+                onChange={(e) =>
+                  setEditingCategory({
+                    ...editingCategory,
+                    parent_id: e.target.value || null,
+                  })
+                }
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-medium"
+              >
+                <option value="">None (Top-Level Main Category)</option>
+                {categories
+                  .filter((c) => c.id !== editingCategory.id)
+                  .map((c) => {
+                    const breadcrumb = getCategoryBreadcrumbs(c.id, categories);
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {breadcrumb || c.name}
+                      </option>
+                    );
+                  })}
+              </select>
+              <span className="text-[10px] text-gray-400 block mt-1">
+                Select a parent to create a Subcategory (e.g. Under "Women's Fashion") or Sub-subcategory (e.g. Under "Ladies Shoes").
+              </span>
+            </div>
+
+            <div>
               <label className="font-bold block mb-1">Category Name *</label>
               <input
                 type="text"
@@ -2287,6 +3198,7 @@ export default function AdminPage() {
                   })
                 }
                 className="w-full bg-gray-50 border rounded-xl p-2.5"
+                placeholder="e.g. Ladies Shoes"
               />
             </div>
 
@@ -3243,7 +4155,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200 text-xs">
                     {invoiceOrder.items && invoiceOrder.items.length > 0 ? (
-                      invoiceOrder.items.map((item, idx) => (
+                      invoiceOrder.items.map((item: any, idx: number) => (
                         <tr key={idx}>
                           <td className="py-2.5 px-3 font-mono text-gray-500">{idx + 1}</td>
                           <td className="py-2.5 px-3 font-medium text-gray-900">

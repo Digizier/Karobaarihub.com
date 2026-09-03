@@ -10,14 +10,17 @@ export interface Category {
   image_url?: string;
   is_active: boolean;
   sort_order: number;
+  children?: Category[];
+  level?: number;
 }
 
 export interface ProductVariant {
   id: string;
-  product_id: string;
+  product_id?: string;
   sku?: string;
   name: string;
   attributes?: Record<string, string>; // e.g. { color: "Maroon", size: "XL" }
+  type?: "color" | "size" | "custom";
   price: number;
   sale_price?: number | null;
   stock: number;
@@ -49,6 +52,7 @@ export interface Product {
   sku?: string;
   stock: number;
   thumbnail_url: string;
+  video_url?: string;
   is_active: boolean;
   is_featured: boolean;
   is_flash_sale: boolean;

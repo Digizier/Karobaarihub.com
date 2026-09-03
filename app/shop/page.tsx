@@ -8,11 +8,12 @@ import {
   SlidersHorizontal,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   RotateCcw,
   X,
 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import { getProducts, getCategories } from "@/lib/db";
+import { getProducts, getCategories, buildCategoryTree, slugify } from "@/lib/db";
 import { Product, Category } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 8;
@@ -38,6 +39,52 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
   const [minRating, setMinRating] = useState<number>(0);
   const [sort, setSort] = useState<"best_match" | "top_sales" | "price_asc" | "price_desc" | "newest">("best_match");
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategoryExpand = (id: string) => {
+    setExpandedCategories((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const categoryTree = buildCategoryTree(categories.filter((c) => c.is_active));
+
+  const getCategoryPath = (slug: string, cats: Category[]): Category[] => {
+    if (!slug) return [];
+    const cleanTarget = slug.toLowerCase().trim();
+    const target = cats.find((c) => c.slug.toLowerCase().trim() === cleanTarget || slugify(c.name) === cleanTarget);
+    if (!target) return [];
+    const path: Category[] = [];
+    let curr: Category | undefined = target;
+    const catMap = new Map(cats.map((c) => [c.id, c]));
+    while (curr) {
+      path.unshift(curr);
+      curr = curr.parent_id ? catMap.get(curr.parent_id) : undefined;
+    }
+    return path;
+  };
+
+  const categoryTrail = getCategoryPath(selectedCategory, categories);
+
+  // Auto-expand tree path for active category
+  useEffect(() => {
+    if (selectedCategory && categories.length > 0) {
+      const cleanTarget = selectedCategory.toLowerCase().trim();
+      const target = categories.find((c) => c.slug.toLowerCase().trim() === cleanTarget || slugify(c.name) === cleanTarget);
+      if (target) {
+        const toExpand: Record<string, boolean> = {};
+        let curr: Category | undefined = target;
+        const catMap = new Map(categories.map((c) => [c.id, c]));
+        while (curr) {
+          if (curr.parent_id) {
+            toExpand[curr.parent_id] = true;
+            curr = catMap.get(curr.parent_id);
+          } else {
+            curr = undefined;
+          }
+        }
+        setExpandedCategories((prev) => ({ ...prev, ...toExpand }));
+      }
+    }
+  }, [selectedCategory, categories]);
 
   const loadCategoriesData = () => {
     getCategories().then(setCategories);
@@ -105,19 +152,36 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
   return (
     <div className="bg-gray-50 min-h-screen py-3 sm:py-5 w-full overflow-hidden">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 mb-3 truncate">
+        {/* Breadcrumbs with Clickable Trail */}
+        <div className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 mb-3 flex-wrap">
           <Link href="/" className="hover:text-karobaari-maroon flex-shrink-0">Home</Link>
           <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
-          <Link href="/shop" className="hover:text-karobaari-maroon text-karobaari-darkGray font-medium truncate">Marketplace</Link>
-          {selectedCategory && (
-            <>
-              <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              <span className="text-karobaari-maroon font-bold truncate">
-                {activeCategoryTitle}
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("")}
+            className={`hover:text-karobaari-maroon truncate cursor-pointer ${!selectedCategory ? "text-karobaari-maroon font-bold" : "text-karobaari-darkGray font-medium"}`}
+          >
+            Marketplace
+          </button>
+          {categoryTrail.map((cat, idx) => {
+            const isLast = idx === categoryTrail.length - 1 && !initialSearch;
+            return (
+              <span key={cat.id} className="flex items-center gap-1">
+                <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                {isLast ? (
+                  <span className="text-karobaari-maroon font-bold truncate">{cat.name}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.slug)}
+                    className="hover:text-karobaari-maroon font-medium truncate cursor-pointer"
+                  >
+                    {cat.name}
+                  </button>
+                )}
               </span>
-            </>
-          )}
+            );
+          })}
           {initialSearch && (
             <>
               <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
@@ -181,33 +245,32 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Categories</h4>
-              <ul className="space-y-1 text-xs text-gray-600">
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory("")}
-                    className={`w-full text-left px-2 py-1.5 rounded transition-colors cursor-pointer ${
-                      selectedCategory === "" ? "bg-karobaari-maroon text-white font-semibold shadow-xs" : "hover:bg-gray-100"
-                    }`}
-                  >
-                    All Categories
-                  </button>
-                </li>
-                {categories.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory(c.slug)}
-                      className={`w-full text-left px-2 py-1.5 rounded transition-colors truncate cursor-pointer ${
-                        selectedCategory === c.slug ? "bg-karobaari-maroon text-white font-semibold shadow-xs" : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {c.name}
-                    </button>
-                  </li>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Categories</h4>
+                <span className="text-[10px] text-gray-400 font-medium">{categories.length} total</span>
+              </div>
+              <div className="space-y-0.5 text-xs text-gray-600 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("")}
+                  className={`w-full text-left px-2 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-between ${
+                    selectedCategory === "" ? "bg-karobaari-maroon text-white font-bold shadow-xs" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <span>All Categories</span>
+                </button>
+                {categoryTree.map((cat) => (
+                  <CategoryTreeItem
+                    key={cat.id}
+                    cat={cat}
+                    depth={0}
+                    selectedSlug={selectedCategory}
+                    expandedMap={expandedCategories}
+                    onToggle={toggleCategoryExpand}
+                    onSelect={(slug) => setSelectedCategory(slug)}
+                  />
                 ))}
-              </ul>
+              </div>
             </div>
 
             <div className="pt-3 border-t border-gray-100">
@@ -344,32 +407,35 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
             </div>
             <div className="p-4 overflow-y-auto space-y-4 text-xs text-karobaari-darkGray">
               <div>
-                <h4 className="font-bold text-gray-700 mb-2">Categories</h4>
-                <div className="grid grid-cols-2 gap-1.5">
+                <h4 className="font-bold text-gray-700 mb-2">Select Category</h4>
+                <div className="space-y-1 max-h-64 overflow-y-auto pr-1 border border-gray-100 rounded-xl p-2 bg-gray-50/50">
                   <button
                     type="button"
-                    onClick={() => setSelectedCategory("")}
-                    className={`p-2 rounded-lg border text-center font-medium truncate cursor-pointer transition-colors ${
+                    onClick={() => {
+                      setSelectedCategory("");
+                      setIsMobileFilterOpen(false);
+                    }}
+                    className={`w-full text-left p-2 rounded-lg border font-medium truncate cursor-pointer transition-colors ${
                       selectedCategory === ""
                         ? "border-karobaari-maroon bg-red-50 text-karobaari-maroon font-bold shadow-xs"
-                        : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     All Categories
                   </button>
-                  {categories.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(c.slug)}
-                      className={`p-2 rounded-lg border text-center font-medium truncate cursor-pointer transition-colors ${
-                        selectedCategory === c.slug
-                          ? "border-karobaari-maroon bg-red-50 text-karobaari-maroon font-bold shadow-xs"
-                          : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      {c.name}
-                    </button>
+                  {categoryTree.map((cat) => (
+                    <CategoryTreeItem
+                      key={cat.id}
+                      cat={cat}
+                      depth={0}
+                      selectedSlug={selectedCategory}
+                      expandedMap={expandedCategories}
+                      onToggle={toggleCategoryExpand}
+                      onSelect={(slug) => {
+                        setSelectedCategory(slug);
+                        setIsMobileFilterOpen(false);
+                      }}
+                    />
                   ))}
                 </div>
               </div>
@@ -412,5 +478,89 @@ export default function ShopPage() {
     <Suspense fallback={<div className="p-8 text-center text-xs text-gray-500">Loading catalog...</div>}>
       <ShopContent />
     </Suspense>
+  );
+}
+
+function CategoryTreeItem({
+  cat,
+  depth = 0,
+  selectedSlug,
+  expandedMap,
+  onToggle,
+  onSelect,
+}: {
+  cat: Category;
+  depth?: number;
+  selectedSlug: string;
+  expandedMap: Record<string, boolean>;
+  onToggle: (id: string) => void;
+  onSelect: (slug: string) => void;
+}) {
+  const isSelected = selectedSlug === cat.slug;
+  const isExpanded = !!expandedMap[cat.id];
+  const hasChildren = (cat.children || []).length > 0;
+
+  return (
+    <div className="select-none">
+      <div
+        className={`group flex items-center justify-between py-1.5 px-2 rounded-lg text-xs transition-all cursor-pointer ${
+          isSelected
+            ? "bg-karobaari-maroon text-white font-bold shadow-xs"
+            : "text-gray-700 hover:bg-gray-100 hover:text-karobaari-maroon"
+        }`}
+        style={{ paddingLeft: `${Math.max(8, depth * 12 + 8)}px` }}
+      >
+        <button
+          type="button"
+          onClick={() => onSelect(cat.slug)}
+          className="flex items-center gap-1.5 flex-1 text-left truncate cursor-pointer"
+        >
+          {depth > 0 && (
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                isSelected ? "bg-karobaari-gold" : "bg-gray-300 group-hover:bg-karobaari-maroon"
+              }`}
+            />
+          )}
+          <span className="truncate">{cat.name}</span>
+        </button>
+
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(cat.id);
+            }}
+            className={`p-1 rounded transition-transform ${
+              isSelected ? "text-white/80 hover:text-white" : "text-gray-400 hover:text-gray-700"
+            }`}
+            title={isExpanded ? "Collapse" : "Expand"}
+          >
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
+      </div>
+
+      {isExpanded && hasChildren && (
+        <div className="space-y-0.5 mt-0.5 border-l border-gray-100 ml-3">
+          {cat.children!.map((child) => (
+            <CategoryTreeItem
+              key={child.id}
+              cat={child}
+              depth={depth + 1}
+              selectedSlug={selectedSlug}
+              expandedMap={expandedMap}
+              onToggle={onToggle}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

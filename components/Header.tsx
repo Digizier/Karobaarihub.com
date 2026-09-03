@@ -21,14 +21,16 @@ import {
   Lock,
 } from "lucide-react";
 import Logo from "./Logo";
+import DarazCategoryMenu from "./DarazCategoryMenu";
 import { getCartItems, getCartCount, openCartDrawer } from "@/lib/cart";
-import { getSiteSettings } from "@/lib/db";
+import { getSiteSettings, getCategories } from "@/lib/db";
 import { initialSiteSettings } from "@/lib/mockData";
-import { SiteSettings } from "@/lib/types";
+import { SiteSettings, Category } from "@/lib/types";
 
 export default function Header() {
   const router = useRouter();
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(initialSiteSettings);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([
@@ -51,13 +53,21 @@ export default function Header() {
         if (s) setSiteSettings(s);
       });
     };
+    const updateCategories = () => {
+      getCategories().then((cats) => {
+        if (cats) setCategories(cats);
+      });
+    };
     updateCount();
     updateSettings();
+    updateCategories();
     window.addEventListener("kb_cart_updated", updateCount);
     window.addEventListener("kb_settings_updated", updateSettings);
+    window.addEventListener("kb_categories_updated", updateCategories);
     return () => {
       window.removeEventListener("kb_cart_updated", updateCount);
       window.removeEventListener("kb_settings_updated", updateSettings);
+      window.removeEventListener("kb_categories_updated", updateCategories);
     };
   }, []);
 
@@ -269,16 +279,10 @@ export default function Header() {
       </div>
 
       {/* 3. CATEGORY & NAVIGATION STRIP */}
-      <div className="bg-karobaari-offWhite border-b border-gray-200 w-full overflow-hidden">
+      <div className="bg-karobaari-offWhite border-b border-gray-200 w-full relative z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
-          <div className="flex items-center justify-start sm:justify-start gap-5 sm:gap-8 overflow-x-auto py-2.5 scrollbar-none text-xs font-semibold text-karobaari-darkGray whitespace-nowrap">
-            <Link
-              href="/shop"
-              className="flex items-center gap-1.5 text-karobaari-maroon font-bold hover:text-karobaari-darkMaroon transition-colors flex-shrink-0"
-            >
-              <Menu className="w-4 h-4" />
-              <span>All Categories</span>
-            </Link>
+          <div className="flex items-center justify-start sm:justify-start gap-4 sm:gap-7 py-1.5 text-xs font-semibold text-karobaari-darkGray whitespace-nowrap">
+            <DarazCategoryMenu categories={categories} />
 
             <Link
               href="/real-estate"
