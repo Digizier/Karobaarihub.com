@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, Mail, MapPin, MessageCircle, Send, CheckCircle2, Loader2 } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, Send, CheckCircle2, Loader2, Globe } from "lucide-react";
 import { createPropertyInquiry } from "@/lib/db";
 
 export default function ContactPage() {
@@ -42,39 +42,47 @@ export default function ContactPage() {
   return (
     <div className="bg-gray-50 min-h-screen py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <h1 className="font-serif font-bold text-3xl text-karobaari-darkGray">
-            Customer Care &amp; Support
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-karobaari-darkGray">
+            Contact Support — Karobaari Hub &amp; Co.
           </h1>
-          <p className="text-xs text-gray-500 mt-2">
-            We are here to assist with product inquiries, delivery tracking, real estate appointments, and course access.
+          <p className="text-xs sm:text-sm text-gray-600 mt-2.5 leading-relaxed">
+            We are here to assist you with any questions, orders, property inquiries, or course enrollments. Reach out to us through any of the official channels below:
           </p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div>
-              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Direct Hotline &amp; WhatsApp</span>
-              <a href="tel:+923359939702" className="flex items-center gap-3 font-bold text-base text-karobaari-darkGray hover:text-karobaari-maroon">
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Business WhatsApp</span>
+              <a href="https://wa.me/923359939702" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 font-bold text-base text-karobaari-darkGray hover:text-karobaari-maroon">
                 <Phone className="w-5 h-5 text-karobaari-maroon" />
                 <span>+92 335 9939 702</span>
               </a>
             </div>
 
             <div>
-              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Official Email</span>
-              <a href="mailto:prismrealestate4@gmail.com" className="flex items-center gap-3 font-medium text-gray-700 hover:text-karobaari-maroon">
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Support Email</span>
+              <a href="mailto:karobaarihub@gmail.com" className="flex items-center gap-3 font-medium text-gray-700 hover:text-karobaari-maroon">
                 <Mail className="w-5 h-5 text-karobaari-maroon" />
-                <span>prismrealestate4@gmail.com</span>
+                <span>karobaarihub@gmail.com</span>
               </a>
             </div>
 
             <div>
-              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Physical Office Address</span>
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Head Office</span>
               <div className="flex items-start gap-3 text-gray-700">
                 <MapPin className="w-5 h-5 text-karobaari-maroon flex-shrink-0 mt-0.5" />
                 <span>Main Stop Shahpur, Adyala Road, Rawalpindi / Islamabad, Pakistan</span>
               </div>
+            </div>
+
+            <div>
+              <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Official Website</span>
+              <a href="https://karobaarihub.com" className="flex items-center gap-3 font-medium text-gray-700 hover:text-karobaari-maroon">
+                <Globe className="w-5 h-5 text-karobaari-maroon" />
+                <span>karobaarihub.com</span>
+              </a>
             </div>
 
             <div className="pt-4 border-t border-gray-100">

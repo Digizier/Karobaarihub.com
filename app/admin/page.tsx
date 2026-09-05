@@ -1898,7 +1898,7 @@ export default function AdminPage() {
                       value={siteSettings.email}
                       onChange={(e) => setSiteSettings({ ...siteSettings, email: e.target.value })}
                       className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
-                      placeholder="support@karobaarihub.com"
+                      placeholder="karobaarihub@gmail.com"
                     />
                   </div>
 

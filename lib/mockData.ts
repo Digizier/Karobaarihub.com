@@ -1,10 +1,10 @@
 import { Category, Product, Property, DigitalBook, Course, Banner, Voucher, Testimonial, SiteSettings } from "./types";
 
 export const initialSiteSettings: SiteSettings = {
-  site_name: "Karobaari Hub & Prism Real Estate",
+  site_name: "Karobaari Hub & Co.",
   hotline: "+92 335 9939 702",
   whatsapp: "+92 335 9939 702",
-  email: "prismrealestate4@gmail.com",
+  email: "karobaarihub@gmail.com",
   address: "Shahpur, Adyala Road, Rawalpindi / Islamabad",
   free_shipping_threshold: 3000,
   standard_shipping_fee: 199,
@@ -15,7 +15,7 @@ export const initialSiteSettings: SiteSettings = {
   easypaisa_number: "0335 9939702",
   easypaisa_title: "Karobaari Hub",
   bank_name: "Meezan Bank Limited",
-  bank_account_title: "Karobaari Hub & Prism Real Estate",
+  bank_account_title: "Karobaari Hub & Co.",
   bank_account_number: "PK45MEZN0001234567890101",
 };
 

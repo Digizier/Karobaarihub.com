@@ -31,7 +31,7 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-2">
             <Logo variant="karobaari" className="mb-3" />
             <p className="text-xs text-gray-400 leading-relaxed mb-4 max-w-sm">
-              Karobaari Hub is Pakistan&apos;s premier multi-niche commerce and investment portal, featuring marketplace products, machinery, Prism Real Estate properties, online courses, and digital e-books.
+              Karobaari Hub &amp; Co. is Pakistan&apos;s premier multi-niche commerce and investment portal, featuring marketplace products, machinery, Prism Real Estate properties, online courses, and digital e-books.
             </p>
             <div className="space-y-2 text-xs text-gray-300">
               <a
@@ -42,11 +42,11 @@ export default function Footer() {
                 <span>{siteSettings.hotline || "+92 335 9939 702"}</span>
               </a>
               <a
-                href={`mailto:${siteSettings.email || "prismrealestate4@gmail.com"}`}
+                href={`mailto:${siteSettings.email || "karobaarihub@gmail.com"}`}
                 className="flex items-center gap-2 hover:text-karobaari-gold transition-colors"
               >
                 <Mail className="w-3.5 h-3.5 text-karobaari-gold flex-shrink-0" />
-                <span>{siteSettings.email || "prismrealestate4@gmail.com"}</span>
+                <span>{siteSettings.email || "karobaarihub@gmail.com"}</span>
               </a>
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-karobaari-gold flex-shrink-0 mt-0.5" />
@@ -119,6 +119,7 @@ export default function Footer() {
               <li><Link href="/real-estate" className="hover:text-karobaari-gold">Houses For Sale</Link></li>
               <li><Link href="/real-estate?type=Plot" className="hover:text-karobaari-gold">Residential &amp; Plots</Link></li>
               <li><Link href="/real-estate/services" className="hover:text-karobaari-gold">Property Consultancy</Link></li>
+              <li><Link href="/real-estate/booking-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Bayana &amp; Booking Policy</Link></li>
               <li><Link href="/digital-books" className="hover:text-karobaari-gold">Digital E-Books</Link></li>
               <li><Link href="/courses" className="hover:text-karobaari-gold">Video Courses</Link></li>
               <li><Link href="/track-order" className="hover:text-karobaari-gold">Track Order</Link></li>
@@ -136,6 +137,8 @@ export default function Footer() {
               <li><Link href="/shipping-policy" className="hover:text-karobaari-gold">Shipping Policy</Link></li>
               <li><Link href="/refund-return-policy" className="hover:text-karobaari-gold">Return &amp; Refund</Link></li>
               <li><Link href="/privacy-policy" className="hover:text-karobaari-gold">Privacy Policy</Link></li>
+              <li><Link href="/reseller-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Reseller Policy</Link></li>
+              <li><Link href="/pricing-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Transparent Pricing Policy</Link></li>
               <li><Link href="/terms-of-service" className="hover:text-karobaari-gold">Terms of Service</Link></li>
             </ul>
           </div>
@@ -144,7 +147,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-500">
           <div className="flex items-center gap-1.5 flex-wrap justify-center sm:justify-start">
-            <span>&copy; {new Date().getFullYear()} {siteSettings.site_name || "Karobaari Hub & Prism Real Estate"}. All Rights Reserved.</span>
+            <span>&copy; {new Date().getFullYear()} {siteSettings.site_name || "Karobaari Hub & Co."}. All Rights Reserved.</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
             <span>Rawalpindi / Islamabad / Pakistan</span>

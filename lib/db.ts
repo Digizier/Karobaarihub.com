@@ -1301,14 +1301,14 @@ export async function adminDeleteBanner(id: string): Promise<boolean> {
 
 // ORDERS MANAGEMENT
 export const DEFAULT_SHIPPING_CONFIG: AdminShippingConfig = {
-  store_name: "Karobaari Hub & Prism Real Estate",
+  store_name: "Karobaari Hub & Co.",
   phone: "+92 335 9939702",
-  email: "prismrealestate4@gmail.com",
+  email: "karobaarihub@gmail.com",
   dispatch_address: "Main Stop Shahpur, Adyala Road",
   city: "Rawalpindi / Islamabad",
   province: "Punjab",
   ntn_number: "PK-NTN-893241-7",
-  invoice_footer_note: "Thank you for shopping with Karobaari Hub! For order tracking or support, contact us on WhatsApp.",
+  invoice_footer_note: "Thank you for shopping with Karobaari Hub & Co.! For order tracking or support, contact us on WhatsApp.",
   return_policy_note: "7-Day Easy Return Policy applicable for damaged or incorrect goods upon delivery inspection.",
 };
 

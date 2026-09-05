@@ -53,7 +53,7 @@ async function fixRLS() {
     { key: "site_name", value: "Karobaari Hub" },
     { key: "hotline", value: "+92 335 9939702" },
     { key: "whatsapp_number", value: "+92 335 9939702" },
-    { key: "contact_email", value: "prismrealestate4@gmail.com" },
+    { key: "contact_email", value: "karobaarihub@gmail.com" },
     { key: "address", value: "Main Stop Shahpur, Adyala Road, Rawalpindi / Islamabad, Pakistan" },
     { key: "currency", value: "PKR" },
     { key: "delivery_charge_standard", value: "199" },

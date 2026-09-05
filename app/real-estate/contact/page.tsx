@@ -1,4 +1,4 @@
-﻿import { Phone, Mail, MapPin, MessageCircle, Clock } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, Clock } from "lucide-react";
 
 export default function RealEstateContactPage() {
   return (
@@ -43,8 +43,8 @@ export default function RealEstateContactPage() {
               <span className="font-bold text-gray-400 uppercase text-[10px] block mb-1">Official Email</span>
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-karobaari-maroon flex-shrink-0" />
-                <a href="mailto:prismrealestate4@gmail.com" className="font-semibold text-gray-700 hover:text-karobaari-maroon">
-                  prismrealestate4@gmail.com
+                <a href="mailto:karobaarihub@gmail.com" className="font-semibold text-gray-700 hover:text-karobaari-maroon">
+                  karobaarihub@gmail.com
                 </a>
               </div>
             </div>
