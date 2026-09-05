@@ -119,7 +119,7 @@ export default function Footer() {
               <li><Link href="/real-estate" className="hover:text-karobaari-gold">Houses For Sale</Link></li>
               <li><Link href="/real-estate?type=Plot" className="hover:text-karobaari-gold">Residential &amp; Plots</Link></li>
               <li><Link href="/real-estate/services" className="hover:text-karobaari-gold">Property Consultancy</Link></li>
-              <li><Link href="/real-estate/booking-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Bayana &amp; Booking Policy</Link></li>
+              <li><Link href="/real-estate/booking-policy" className="hover:text-karobaari-gold">Bayana &amp; Booking Policy</Link></li>
               <li><Link href="/digital-books" className="hover:text-karobaari-gold">Digital E-Books</Link></li>
               <li><Link href="/courses" className="hover:text-karobaari-gold">Video Courses</Link></li>
               <li><Link href="/track-order" className="hover:text-karobaari-gold">Track Order</Link></li>
@@ -137,8 +137,8 @@ export default function Footer() {
               <li><Link href="/shipping-policy" className="hover:text-karobaari-gold">Shipping Policy</Link></li>
               <li><Link href="/refund-return-policy" className="hover:text-karobaari-gold">Return &amp; Refund</Link></li>
               <li><Link href="/privacy-policy" className="hover:text-karobaari-gold">Privacy Policy</Link></li>
-              <li><Link href="/reseller-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Reseller Policy</Link></li>
-              <li><Link href="/pricing-policy" className="hover:text-karobaari-gold text-amber-200/90 font-medium">Transparent Pricing Policy</Link></li>
+              <li><Link href="/reseller-policy" className="hover:text-karobaari-gold">Reseller Policy</Link></li>
+              <li><Link href="/pricing-policy" className="hover:text-karobaari-gold">Transparent Pricing Policy</Link></li>
               <li><Link href="/terms-of-service" className="hover:text-karobaari-gold">Terms of Service</Link></li>
             </ul>
           </div>
