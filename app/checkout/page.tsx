@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ShieldCheck,
   MapPin,
@@ -57,6 +58,10 @@ export default function CheckoutPage() {
       router.push("/cart");
     } else {
       setItems(cart);
+      const onlyDigital = cart.length > 0 && cart.every((i) => i.type === "digital_book" || i.type === "course");
+      if (onlyDigital) {
+        setPaymentMethod((prev) => (prev === "COD" ? "JazzCash" : prev));
+      }
     }
 
     getSiteSettings().then((s) => {
@@ -130,14 +135,22 @@ export default function CheckoutPage() {
       : appliedVoucher.discount_value
     : 0;
 
-  const isFreeShipping = appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold;
+  const isOnlyDigital = items.length > 0 && items.every((i) => i.type === "digital_book" || i.type === "course");
+  const isFreeShipping = isOnlyDigital || appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold;
   const shippingFee = isFreeShipping ? 0 : standardShippingFee;
   const totalAmount = Math.max(0, subtotal - discountAmount + shippingFee);
 
+  const getItemHref = (item: CartItem) => {
+    if (item.type === "course") return `/courses/?slug=${item.slug}`;
+    if (item.type === "digital_book") return `/digital-books/?slug=${item.slug}`;
+    return `/product/?slug=${item.slug}`;
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim() || !address.trim() || !city.trim()) {
-      setErrorMsg("Please complete all required fields.");
+    const finalAddress = isOnlyDigital && !address.trim() ? "Digital Access Delivery (WhatsApp & Email)" : address.trim();
+    if (!fullName.trim() || !phone.trim() || !finalAddress || !city.trim()) {
+      setErrorMsg("Please complete all required fields (Full Name, WhatsApp Phone, and City).");
       return;
     }
 
@@ -153,7 +166,7 @@ export default function CheckoutPage() {
           province,
           city,
           area: area.trim() || undefined,
-          delivery_address: address.trim(),
+          delivery_address: finalAddress,
           address_label: addressLabel,
           subtotal,
           voucher_code: appliedVoucher?.code || undefined,
@@ -164,18 +177,27 @@ export default function CheckoutPage() {
           payment_status: "Pending",
           order_status: "Pending",
           customer_notes: [
+            isOnlyDigital ? "[DIGITAL ORDER: Online Access via WhatsApp & Email]" : "",
             customerNotes.trim(),
             transactionRef.trim() ? `[Payment TID/Sender: ${transactionRef.trim()}]` : "",
           ].filter(Boolean).join(" | ") || undefined,
         },
-        items.map((it) => ({
-          product_id: it.product_id,
-          product_name_snapshot: it.title,
-          variant_snapshot: it.variant_name,
-          unit_price: it.price,
-          quantity: it.quantity,
-          line_total: it.price * it.quantity,
-        }))
+        items.map((it) => {
+          let variantLabel = it.variant_name || "";
+          if (it.type === "course" && !variantLabel.toLowerCase().includes("course")) {
+            variantLabel = variantLabel ? `[Course] ${variantLabel}` : "Online Course";
+          } else if (it.type === "digital_book" && !variantLabel.toLowerCase().includes("book")) {
+            variantLabel = variantLabel ? `[E-Book] ${variantLabel}` : "Digital E-Book";
+          }
+          return {
+            product_id: it.type === "ecommerce" ? it.product_id : null,
+            product_name_snapshot: it.title,
+            variant_snapshot: variantLabel || undefined,
+            unit_price: it.price,
+            quantity: it.quantity,
+            line_total: it.price * it.quantity,
+          };
+        })
       );
 
       if (result.success) {
@@ -220,9 +242,23 @@ export default function CheckoutPage() {
               <div className="flex items-center gap-1.5 pb-2 border-b border-gray-100">
                 <MapPin className="w-4 h-4 text-karobaari-maroon" />
                 <h2 className="font-serif font-bold text-sm sm:text-base text-karobaari-darkGray">
-                  1. Delivery Address (Pakistan)
+                  {isOnlyDigital ? "1. Customer & Digital Delivery Information" : "1. Delivery Address (Pakistan)"}
                 </h2>
               </div>
+
+              {isOnlyDigital && (
+                <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 sm:p-3.5 flex items-start gap-2.5 text-xs text-emerald-900">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <strong className="block font-bold text-emerald-950 text-xs sm:text-sm">
+                      Digital Knowledge Order &bull; 100% Zero Shipping Fee
+                    </strong>
+                    <span className="text-[11px] text-emerald-800 leading-relaxed block">
+                      Your online courses &amp; digital e-books will be delivered directly to your WhatsApp ({phone || "03xx xxxxxxx"}) and Email. No physical courier delivery is required.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
@@ -301,76 +337,90 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="font-bold text-gray-700 block mb-1">Complete Street / House Address *</label>
+                  <label className="font-bold text-gray-700 block mb-1">
+                    Complete Street / House Address {isOnlyDigital ? "(Optional for Digital Access)" : "*"}
+                  </label>
                   <textarea
-                    required
-                    rows={2}
-                    placeholder="House / Flat #, Street #, Landmark / Road..."
+                    required={!isOnlyDigital}
+                    rows={isOnlyDigital ? 1 : 2}
+                    placeholder={
+                      isOnlyDigital
+                        ? "Optional - Access credentials & links sent via WhatsApp / Email"
+                        : "House / Flat #, Street #, Landmark / Road..."
+                    }
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
                   />
                 </div>
 
-                {/* Address Type Interactive Cards */}
-                <div className="sm:col-span-2">
-                  <label className="font-bold text-gray-700 block mb-1.5">Address Type</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setAddressLabel("Home")}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer ${
-                        addressLabel === "Home"
-                          ? "border-karobaari-maroon bg-red-50/70 ring-1 ring-karobaari-maroon shadow-2xs"
-                          : "border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                {/* Address Type Interactive Cards (Physical orders only) */}
+                {!isOnlyDigital && (
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-gray-700 block mb-1.5">Address Type</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setAddressLabel("Home")}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer ${
                           addressLabel === "Home"
-                            ? "bg-karobaari-maroon text-white shadow-xs"
-                            : "bg-white border border-gray-200 text-gray-500"
+                            ? "border-karobaari-maroon bg-red-50/70 ring-1 ring-karobaari-maroon shadow-2xs"
+                            : "border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300"
                         }`}
                       >
-                        <Home className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-bold text-xs text-gray-900 block leading-tight">Home Address</span>
-                        <span className="text-[10px] text-gray-500 block mt-0.5">Delivery All Day (9am - 9pm)</span>
-                      </div>
-                    </button>
+                        <div
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            addressLabel === "Home"
+                              ? "bg-karobaari-maroon text-white shadow-xs"
+                              : "bg-white border border-gray-200 text-gray-500"
+                          }`}
+                        >
+                          <Home className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-gray-900 block leading-tight">Home Address</span>
+                          <span className="text-[10px] text-gray-500 block mt-0.5">Delivery All Day (9am - 9pm)</span>
+                        </div>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setAddressLabel("Office")}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer ${
-                        addressLabel === "Office"
-                          ? "border-karobaari-maroon bg-red-50/70 ring-1 ring-karobaari-maroon shadow-2xs"
-                          : "border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      <button
+                        type="button"
+                        onClick={() => setAddressLabel("Office")}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer ${
                           addressLabel === "Office"
-                            ? "bg-karobaari-maroon text-white shadow-xs"
-                            : "bg-white border border-gray-200 text-gray-500"
+                            ? "border-karobaari-maroon bg-red-50/70 ring-1 ring-karobaari-maroon shadow-2xs"
+                            : "border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-300"
                         }`}
                       >
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-bold text-xs text-gray-900 block leading-tight">Office / Commercial</span>
-                        <span className="text-[10px] text-gray-500 block mt-0.5">Business Hours (9am - 6pm)</span>
-                      </div>
-                    </button>
+                        <div
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            addressLabel === "Office"
+                              ? "bg-karobaari-maroon text-white shadow-xs"
+                              : "bg-white border border-gray-200 text-gray-500"
+                          }`}
+                        >
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-gray-900 block leading-tight">Office / Commercial</span>
+                          <span className="text-[10px] text-gray-500 block mt-0.5">Business Hours (9am - 6pm)</span>
+                        </div>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="sm:col-span-2">
-                  <label className="font-bold text-gray-700 block mb-1">Delivery Instructions / Notes (Optional)</label>
+                  <label className="font-bold text-gray-700 block mb-1">
+                    {isOnlyDigital ? "Special Requests / Notes (Optional)" : "Delivery Instructions / Notes (Optional)"}
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. Call before delivery, leave with guard..."
+                    placeholder={
+                      isOnlyDigital
+                        ? "e.g. Please send to alternate WhatsApp number..."
+                        : "e.g. Call before delivery, leave with guard..."
+                    }
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
@@ -404,10 +454,18 @@ export default function CheckoutPage() {
                       />
                       <div>
                         <span>Cash on Delivery (COD)</span>
-                        <span className="text-[10px] text-gray-500 font-normal block">Pay cash to courier upon parcel delivery</span>
+                        <span className="text-[10px] text-gray-500 font-normal block">
+                          {isOnlyDigital
+                            ? "Agent will contact you on WhatsApp for verification & activation"
+                            : "Pay cash to courier upon parcel delivery"}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-[10px] bg-karobaari-gold text-karobaari-darkGray font-bold px-1.5 py-0.5 rounded">Recommended</span>
+                    {!isOnlyDigital ? (
+                      <span className="text-[10px] bg-karobaari-gold text-karobaari-darkGray font-bold px-1.5 py-0.5 rounded">Recommended</span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">Manual Verification</span>
+                    )}
                   </label>
                 )}
 
@@ -576,8 +634,21 @@ export default function CheckoutPage() {
                         <Image src={item.thumbnail_url || "/assets/cloth-stand-1.jpeg"} alt={item.title || "Item"} fill unoptimized className="object-cover" />
                       </div>
                       <div className="min-w-0">
-                        <span className="font-semibold text-karobaari-darkGray truncate block">{item.title}</span>
-                        <span className="text-[10px] text-gray-500">Qty: {item.quantity}</span>
+                        <Link
+                          href={getItemHref(item)}
+                          className="font-semibold text-karobaari-darkGray hover:text-karobaari-maroon truncate block"
+                        >
+                          {item.title}
+                        </Link>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {item.type === "course" && (
+                            <span className="text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.2 rounded">Course</span>
+                          )}
+                          {item.type === "digital_book" && (
+                            <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">E-Book</span>
+                          )}
+                          <span className="text-[10px] text-gray-500">Qty: {item.quantity}</span>
+                        </div>
                       </div>
                     </div>
                     <span className="font-bold text-karobaari-darkGray font-sans whitespace-nowrap">
@@ -654,7 +725,9 @@ export default function CheckoutPage() {
                   <span>Delivery / Courier</span>
                   <span className="font-semibold text-karobaari-darkGray">
                     {shippingFee === 0 ? (
-                      <span className="text-emerald-700 font-bold">FREE Delivery</span>
+                      <span className="text-emerald-700 font-bold">
+                        {isOnlyDigital ? "FREE (Digital Delivery)" : "FREE Delivery"}
+                      </span>
                     ) : (
                       `Rs. ${shippingFee}`
                     )}
@@ -686,7 +759,7 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-center gap-1 text-[10px] text-gray-500 pt-1 text-center">
                 <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
-                <span>100% Safe COD Checkout</span>
+                <span>{isOnlyDigital ? "100% Instant Digital Access Delivery" : "100% Safe COD Checkout"}</span>
               </div>
             </div>
           </div>

@@ -110,10 +110,17 @@ export default function CartPage() {
       : appliedVoucher.discount_value
     : 0;
 
+  const isOnlyDigital = items.length > 0 && items.every((i) => i.type === "digital_book" || i.type === "course");
   const isFreeShipping =
-    appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold || items.length === 0;
+    isOnlyDigital || appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold || items.length === 0;
   const shippingFee = isFreeShipping ? 0 : standardShippingFee;
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  const getItemHref = (item: CartItem) => {
+    if (item.type === "course") return `/courses/?slug=${item.slug}`;
+    if (item.type === "digital_book") return `/digital-books/?slug=${item.slug}`;
+    return `/product/?slug=${item.slug}`;
+  };
 
   if (items.length === 0) {
     return (
@@ -157,15 +164,30 @@ export default function CartPage() {
           </button>
         </div>
 
-        {/* Free Shipping Milestone Alert */}
-        {subtotal > 0 && subtotal < freeShippingThreshold && !appliedVoucher?.is_free_shipping && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-xs text-amber-900 flex items-center gap-2">
-            <Truck className="w-4 h-4 text-karobaari-maroon shrink-0" />
-            <span>
-              Add <strong>Rs. {(freeShippingThreshold - subtotal).toLocaleString()}</strong> more to your order to unlock{" "}
-              <strong className="text-karobaari-maroon">100% FREE Delivery</strong>!
-            </span>
+        {/* Delivery / Shipping Alert Tracker */}
+        {isOnlyDigital && items.length > 0 ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 mb-4 text-xs text-emerald-900 flex items-center gap-2 font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Digital Order: Instant Access &bull; 100% Zero Delivery Fee</span>
           </div>
+        ) : (
+          <>
+            {subtotal > 0 && subtotal < freeShippingThreshold && !appliedVoucher?.is_free_shipping && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-xs text-amber-900 flex items-center gap-2">
+                <Truck className="w-4 h-4 text-karobaari-maroon shrink-0" />
+                <span>
+                  Add <strong>Rs. {(freeShippingThreshold - subtotal).toLocaleString()}</strong> more to your order to unlock{" "}
+                  <strong className="text-karobaari-maroon">100% FREE Delivery</strong>!
+                </span>
+              </div>
+            )}
+            {isFreeShipping && subtotal > 0 && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 mb-4 text-xs text-emerald-900 flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Congratulations! You have unlocked FREE Delivery.</span>
+              </div>
+            )}
+          </>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
@@ -188,7 +210,7 @@ export default function CartPage() {
                   </div>
                   <div className="min-w-0">
                     <Link
-                      href={`/product/?slug=${item.slug}`}
+                      href={getItemHref(item)}
                       className="text-xs sm:text-sm font-semibold text-karobaari-darkGray hover:text-karobaari-maroon line-clamp-1 block truncate"
                     >
                       {item.title}

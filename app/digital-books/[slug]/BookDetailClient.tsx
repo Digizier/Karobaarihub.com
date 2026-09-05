@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams, useParams } from "next/navigation";
-import { ArrowLeft, PhoneCall, BookOpen, CheckCircle2, ShieldCheck, Download, FileText } from "lucide-react";
+import { useSearchParams, useParams, useRouter } from "next/navigation";
+import { ArrowLeft, PhoneCall, BookOpen, CheckCircle2, ShieldCheck, Download, FileText, ShoppingCart, Zap, Check } from "lucide-react";
 import { DigitalBook } from "@/lib/types";
 import { getDigitalBookBySlug } from "@/lib/db";
+import { addToCart } from "@/lib/cart";
 
 interface BookDetailClientProps {
   book?: DigitalBook | null;
@@ -14,12 +15,14 @@ interface BookDetailClientProps {
 }
 
 export default function BookDetailClient({ book: initialBook, slug: propSlug }: BookDetailClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
   const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
 
   const [book, setBook] = useState<DigitalBook | null>(initialBook || null);
   const [loading, setLoading] = useState(!initialBook);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     if (initialBook && (!activeSlug || initialBook.slug === activeSlug)) {
@@ -76,6 +79,49 @@ export default function BookDetailClient({ book: initialBook, slug: propSlug }: 
   const whatsappMsg = encodeURIComponent(
     `Hello Karobaari Hub, I would like to purchase the e-book: "${book.title}" (Rs. ${currentPrice.toLocaleString()}).`
   );
+
+  const handleAddToCart = () => {
+    if (!book) return;
+    addToCart(
+      {
+        id: `book-${book.id}`,
+        product_id: book.id,
+        type: "digital_book",
+        title: book.title,
+        slug: book.slug,
+        price: currentPrice,
+        original_price: hasSale ? regularPrice : null,
+        thumbnail_url: book.cover_url || "/assets/ebook-cover.jpeg",
+        variant_name: `Digital E-Book (${book.file_format || "PDF"} Edition)`,
+        stock_available: 999,
+      },
+      1,
+      true
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    if (!book) return;
+    addToCart(
+      {
+        id: `book-${book.id}`,
+        product_id: book.id,
+        type: "digital_book",
+        title: book.title,
+        slug: book.slug,
+        price: currentPrice,
+        original_price: hasSale ? regularPrice : null,
+        thumbnail_url: book.cover_url || "/assets/ebook-cover.jpeg",
+        variant_name: `Digital E-Book (${book.file_format || "PDF"} Edition)`,
+        stock_available: 999,
+      },
+      1,
+      false
+    );
+    router.push("/checkout");
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen py-4 sm:py-8 w-full overflow-hidden">
@@ -166,19 +212,44 @@ export default function BookDetailClient({ book: initialBook, slug: propSlug }: 
                   </div>
                 </div>
 
-                {/* WhatsApp Instant CTA Button */}
-                <div className="space-y-2 pt-1">
+                {/* Action Buttons: Add to Cart & Buy Now (Identical to Product Page) */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border transition-all active:scale-95 cursor-pointer ${
+                        added
+                          ? "bg-green-600 text-white border-green-600"
+                          : "bg-white text-karobaari-maroon border-karobaari-maroon hover:bg-red-50 shadow-xs"
+                      }`}
+                    >
+                      {added ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+                      <span>{added ? "Added to Cart" : "Add to Cart"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleBuyNow}
+                      className="w-full py-3 rounded-xl bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs sm:text-sm shadow flex items-center justify-center gap-2 border border-karobaari-gold/40 transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Zap className="w-4 h-4 text-karobaari-gold fill-karobaari-gold" />
+                      <span>Buy Now &amp; Checkout</span>
+                    </button>
+                  </div>
+
                   <a
                     href={`https://wa.me/923359939702?text=${whatsappMsg}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm sm:text-base py-3 sm:py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <PhoneCall className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>Get Instant Access on WhatsApp</span>
+                    <PhoneCall className="w-4 h-4" />
+                    <span>Get Instant Access via WhatsApp</span>
                   </a>
+
                   <p className="text-[10px] sm:text-[11px] text-center text-gray-400 font-medium">
-                    Order details &amp; instant direct download link delivered immediately to your WhatsApp.
+                    Instant direct digital delivery to WhatsApp &amp; Email &bull; Zero shipping fee.
                   </p>
                 </div>
 
@@ -221,22 +292,46 @@ export default function BookDetailClient({ book: initialBook, slug: propSlug }: 
           </div>
 
           {/* Secondary Bottom Order Strip */}
-          <div className="mt-8 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50/80 p-4 rounded-xl border border-gray-200">
+          <div className="mt-8 pt-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/80 p-4 rounded-xl border border-gray-200">
             <div>
               <span className="text-xs font-bold text-gray-800 block">Ready to start reading?</span>
               <span className="text-[11px] text-gray-500">
                 Get full access for only <strong className="text-karobaari-maroon font-bold">Rs. {currentPrice.toLocaleString()}</strong>
               </span>
             </div>
-            <a
-              href={`https://wa.me/923359939702?text=${whatsappMsg}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition-colors shrink-0"
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span>Get on WhatsApp</span>
-            </a>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className={`py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition-all active:scale-95 cursor-pointer ${
+                  added
+                    ? "bg-green-600 text-white border-green-600"
+                    : "bg-white text-karobaari-maroon border-karobaari-maroon hover:bg-red-50 shadow-xs"
+                }`}
+              >
+                {added ? <Check className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                <span>{added ? "Added" : "Add to Cart"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                className="bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center gap-1.5 border border-karobaari-gold/40 transition-colors shrink-0 cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 text-karobaari-gold fill-karobaari-gold" />
+                <span>Buy Now</span>
+              </button>
+
+              <a
+                href={`https://wa.me/923359939702?text=${whatsappMsg}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center gap-1.5 transition-colors shrink-0"
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

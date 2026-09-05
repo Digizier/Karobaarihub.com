@@ -1,14 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { FileText, ArrowRight, Clock, Layers } from "lucide-react";
+import { FileText, ArrowRight, Clock, Layers, ShoppingCart, Check } from "lucide-react";
 import { DigitalBook, Course } from "@/lib/types";
+import { addToCart } from "@/lib/cart";
 
 export function BookCard({ book }: { book: DigitalBook }) {
+  const [added, setAdded] = useState(false);
   const hasSale = typeof book.sale_price === "number" && book.sale_price > 0 && book.sale_price < book.price;
   const currentPrice = hasSale ? book.sale_price! : book.price;
   const discountPct = hasSale ? Math.round(((book.price - currentPrice) / book.price) * 100) : 0;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(
+      {
+        id: `book-${book.id}`,
+        product_id: book.id,
+        type: "digital_book",
+        title: book.title,
+        slug: book.slug,
+        price: currentPrice,
+        original_price: hasSale ? book.price : null,
+        thumbnail_url: book.cover_url || "/assets/ebook-cover.jpeg",
+        variant_name: `Digital E-Book (${book.file_format || "PDF"})`,
+        stock_available: 999,
+      },
+      1,
+      true
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:shadow-md hover:border-karobaari-gold transition-all flex flex-col justify-between group w-full min-w-0 h-full">
@@ -45,25 +71,52 @@ export function BookCard({ book }: { book: DigitalBook }) {
         </div>
       </div>
 
-      <div className="p-2.5 sm:p-3.5 pt-0">
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
-              {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
-            </span>
-            {hasSale && (
-              <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
-                Rs. {(book.price || 0).toLocaleString()}
+      <div>
+        <div className="p-2.5 sm:p-3.5 pt-0">
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
+                {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
               </span>
-            )}
+              {hasSale && (
+                <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
+                  Rs. {(book.price || 0).toLocaleString()}
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/digital-books/?slug=${book.slug}`}
+              className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
+            >
+              <span>Read</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
-          <Link
-            href={`/digital-books/?slug=${book.slug}`}
-            className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
+        </div>
+
+        {/* Quick Add Button */}
+        <div className="p-2.5 sm:p-3.5 pt-0 pb-2.5">
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className={`w-full py-1.5 px-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer ${
+              added
+                ? "bg-green-600 text-white"
+                : "bg-karobaari-offWhite hover:bg-karobaari-maroon text-karobaari-darkGray hover:text-white border border-gray-200"
+            }`}
           >
-            <span>Read</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
+            {added ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span>Added</span>
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="w-3 h-3" />
+                <span>Add to Cart</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -71,7 +124,32 @@ export function BookCard({ book }: { book: DigitalBook }) {
 }
 
 export function CourseCard({ course }: { course: Course }) {
-  const currentPrice = course.sale_price ?? course.price;
+  const [added, setAdded] = useState(false);
+  const isSale = typeof course.sale_price === "number" && course.sale_price > 0 && course.sale_price < course.price;
+  const currentPrice = isSale ? course.sale_price! : course.price;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(
+      {
+        id: `course-${course.id}`,
+        product_id: course.id,
+        type: "course",
+        title: course.title,
+        slug: course.slug,
+        price: currentPrice,
+        original_price: isSale ? course.price : null,
+        thumbnail_url: course.thumbnail_url || "/assets/course-thumb.jpeg",
+        variant_name: "Online Video Course (Instant Access)",
+        stock_available: 999,
+      },
+      1,
+      true
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:shadow-md hover:border-karobaari-gold transition-all flex flex-col justify-between group w-full min-w-0 h-full">
@@ -108,25 +186,52 @@ export function CourseCard({ course }: { course: Course }) {
         </div>
       </div>
 
-      <div className="p-2.5 sm:p-3.5 pt-0">
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-baseline gap-1">
-            <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
-              {currentPrice === 0 ? "FREE" : `Rs. ${currentPrice.toLocaleString()}`}
-            </span>
-            {course.sale_price && (
-              <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
-                Rs. {course.price.toLocaleString()}
+      <div>
+        <div className="p-2.5 sm:p-3.5 pt-0">
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs sm:text-sm font-extrabold text-karobaari-maroon">
+                {currentPrice === 0 ? "FREE" : `Rs. ${currentPrice.toLocaleString()}`}
               </span>
-            )}
+              {isSale && (
+                <span className="text-[9px] sm:text-[10px] text-gray-400 line-through">
+                  Rs. {course.price.toLocaleString()}
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/courses/?slug=${course.slug}`}
+              className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
+            >
+              <span>Enroll</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
-          <Link
-            href={`/courses/?slug=${course.slug}`}
-            className="text-[10px] sm:text-xs font-bold text-karobaari-maroon hover:text-karobaari-darkMaroon flex items-center gap-0.5"
+        </div>
+
+        {/* Quick Add Button */}
+        <div className="p-2.5 sm:p-3.5 pt-0 pb-2.5">
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className={`w-full py-1.5 px-2 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer ${
+              added
+                ? "bg-green-600 text-white"
+                : "bg-karobaari-offWhite hover:bg-karobaari-maroon text-karobaari-darkGray hover:text-white border border-gray-200"
+            }`}
           >
-            <span>Enroll</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
+            {added ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span>Enrolled</span>
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="w-3 h-3" />
+                <span>Add to Cart</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

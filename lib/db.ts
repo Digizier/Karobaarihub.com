@@ -499,8 +499,22 @@ export async function createOrder(
         .single();
 
       if (!orderError && insertedOrder) {
-        const orderItemsPayload = items.map((it) => ({ ...it, order_id: insertedOrder.id }));
-        await supabase.from("order_items").insert(orderItemsPayload);
+        const orderItemsPayload = items.map((it) => ({
+          order_id: insertedOrder.id,
+          product_id: it.product_id && isValidUUID(it.product_id) ? it.product_id : null,
+          product_name_snapshot: it.product_name_snapshot,
+          sku_snapshot: it.sku_snapshot || null,
+          variant_snapshot: it.variant_snapshot || null,
+          unit_price: it.unit_price,
+          quantity: it.quantity,
+          line_total: it.line_total,
+        }));
+        const { error: itemsErr } = await supabase.from("order_items").insert(orderItemsPayload);
+        if (itemsErr) {
+          console.warn("Retrying order_items insert with safe product_id: null due to:", itemsErr.message);
+          const safeFallback = orderItemsPayload.map((it) => ({ ...it, product_id: null }));
+          await supabase.from("order_items").insert(safeFallback);
+        }
       }
     } catch (err) {
       console.warn("Supabase order sync error:", err);

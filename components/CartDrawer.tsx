@@ -155,10 +155,17 @@ export default function CartDrawer() {
       : appliedVoucher.discount_value
     : 0;
 
+  const isOnlyDigital = items.length > 0 && items.every((i) => i.type === "digital_book" || i.type === "course");
   const isFreeShipping =
-    appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold || items.length === 0;
+    isOnlyDigital || appliedVoucher?.is_free_shipping || subtotal >= freeShippingThreshold || items.length === 0;
   const shippingFee = isFreeShipping ? 0 : standardShippingFee;
   const estimatedTotal = Math.max(0, subtotal - discountAmount + shippingFee);
+
+  const getItemHref = (item: CartItem) => {
+    if (item.type === "course") return `/courses/?slug=${item.slug}`;
+    if (item.type === "digital_book") return `/digital-books/?slug=${item.slug}`;
+    return `/product/?slug=${item.slug}`;
+  };
 
   const handleProceedCheckout = () => {
     setIsOpen(false);
@@ -203,22 +210,31 @@ export default function CartDrawer() {
           </button>
         </div>
 
-        {/* Free Shipping Alert Tracker */}
-        {subtotal > 0 && subtotal < freeShippingThreshold && !appliedVoucher?.is_free_shipping && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-[11px] text-amber-900 flex items-center gap-1.5">
-            <Truck className="w-3.5 h-3.5 text-karobaari-maroon flex-shrink-0" />
-            <span>
-              Add <strong>Rs. {(freeShippingThreshold - subtotal).toLocaleString()}</strong> more to get{" "}
-              <strong className="text-karobaari-maroon">FREE Delivery</strong>!
-            </span>
-          </div>
-        )}
-
-        {isFreeShipping && subtotal > 0 && (
+        {/* Delivery / Shipping Alert Tracker */}
+        {isOnlyDigital && items.length > 0 ? (
           <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-[11px] text-emerald-900 flex items-center gap-1.5 font-semibold">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-            <span>Congratulations! You have unlocked FREE Delivery.</span>
+            <span>Digital Order: Instant Access &bull; 100% Zero Delivery Fee</span>
           </div>
+        ) : (
+          <>
+            {subtotal > 0 && subtotal < freeShippingThreshold && !appliedVoucher?.is_free_shipping && (
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-[11px] text-amber-900 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-karobaari-maroon flex-shrink-0" />
+                <span>
+                  Add <strong>Rs. {(freeShippingThreshold - subtotal).toLocaleString()}</strong> more to get{" "}
+                  <strong className="text-karobaari-maroon">FREE Delivery</strong>!
+                </span>
+              </div>
+            )}
+
+            {isFreeShipping && subtotal > 0 && (
+              <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-[11px] text-emerald-900 flex items-center gap-1.5 font-semibold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                <span>Congratulations! You have unlocked FREE Delivery.</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Drawer Content: Items List */}
@@ -260,7 +276,7 @@ export default function CartDrawer() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <Link
-                    href={`/product/?slug=${item.slug}`}
+                    href={getItemHref(item)}
                     onClick={() => setIsOpen(false)}
                     className="font-semibold text-xs text-gray-900 hover:text-karobaari-maroon line-clamp-1 block truncate"
                   >

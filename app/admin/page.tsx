@@ -4266,6 +4266,11 @@ export default function AdminPage() {
               <div className="flex justify-between"><span className="text-gray-500">Phone:</span><span className="font-bold text-emerald-600">{viewingOrder.customer_phone}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Address:</span><span className="font-semibold text-gray-800 text-right">{viewingOrder.delivery_address}, {viewingOrder.city}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Method:</span><span className="font-bold uppercase text-karobaari-maroon">{viewingOrder.payment_method}</span></div>
+              {viewingOrder.customer_notes && (
+                <div className="pt-1.5 border-t border-gray-200 text-[11px] text-amber-900 bg-amber-50/80 p-2 rounded-lg">
+                  <strong>Notes &amp; Payment TID:</strong> {viewingOrder.customer_notes}
+                </div>
+              )}
             </div>
 
             <div>
@@ -4273,9 +4278,14 @@ export default function AdminPage() {
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {viewingOrder.items && viewingOrder.items.length > 0 ? (
                   viewingOrder.items.map((it, idx) => (
-                    <div key={idx} className="flex justify-between border-b pb-1">
-                      <span>{it.product_name_snapshot} (x{it.quantity})</span>
-                      <span className="font-bold">Rs. {it.line_total?.toLocaleString()}</span>
+                    <div key={idx} className="flex justify-between items-start border-b pb-1.5 gap-2">
+                      <div className="min-w-0">
+                        <span className="font-semibold text-gray-900 block truncate">{it.product_name_snapshot} (x{it.quantity})</span>
+                        {it.variant_snapshot && (
+                          <span className="text-[10px] text-gray-500 font-mono block">{it.variant_snapshot}</span>
+                        )}
+                      </div>
+                      <span className="font-bold text-karobaari-maroon shrink-0">Rs. {it.line_total?.toLocaleString()}</span>
                     </div>
                   ))
                 ) : (

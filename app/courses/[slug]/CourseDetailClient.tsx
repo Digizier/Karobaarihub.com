@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams, useParams } from "next/navigation";
-import { Clock, Layers, GraduationCap, CheckCircle2, ArrowLeft, PhoneCall, PlayCircle, X } from "lucide-react";
+import { useSearchParams, useParams, useRouter } from "next/navigation";
+import { Clock, Layers, GraduationCap, CheckCircle2, ArrowLeft, PhoneCall, PlayCircle, X, ShoppingCart, Zap, Check } from "lucide-react";
 import { Course } from "@/lib/types";
 import { getCourseBySlug } from "@/lib/db";
+import { addToCart } from "@/lib/cart";
 
 function getYouTubeVideoId(url?: string | null): string | null {
   if (!url) return null;
@@ -20,6 +21,7 @@ interface CourseDetailClientProps {
 }
 
 export default function CourseDetailClient({ course: initialCourse, slug: propSlug }: CourseDetailClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
   const activeSlug = propSlug || (params?.slug as string) || searchParams?.get("slug") || "";
@@ -27,6 +29,54 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
   const [course, setCourse] = useState<Course | null>(initialCourse || null);
   const [loading, setLoading] = useState(!initialCourse);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    if (!course) return;
+    const isSalePrice = typeof course.sale_price === "number" && course.sale_price < course.price;
+    const activePrice = isSalePrice ? course.sale_price! : course.price;
+    addToCart(
+      {
+        id: `course-${course.id}`,
+        product_id: course.id,
+        type: "course",
+        title: course.title,
+        slug: course.slug,
+        price: activePrice,
+        original_price: isSalePrice ? course.price : null,
+        thumbnail_url: course.thumbnail_url || "/assets/course-thumb.jpeg",
+        variant_name: "Online Video Course (Instant Access)",
+        stock_available: 999,
+      },
+      1,
+      true
+    );
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    if (!course) return;
+    const isSalePrice = typeof course.sale_price === "number" && course.sale_price < course.price;
+    const activePrice = isSalePrice ? course.sale_price! : course.price;
+    addToCart(
+      {
+        id: `course-${course.id}`,
+        product_id: course.id,
+        type: "course",
+        title: course.title,
+        slug: course.slug,
+        price: activePrice,
+        original_price: isSalePrice ? course.price : null,
+        thumbnail_url: course.thumbnail_url || "/assets/course-thumb.jpeg",
+        variant_name: "Online Video Course (Instant Access)",
+        stock_available: 999,
+      },
+      1,
+      false
+    );
+    router.push("/checkout");
+  };
 
   useEffect(() => {
     if (initialCourse && (!activeSlug || initialCourse.slug === activeSlug)) {
@@ -195,42 +245,74 @@ export default function CourseDetailClient({ course: initialCourse, slug: propSl
             )}
 
             {/* PRICING & ENROLLMENT */}
-            <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-baseline gap-2">
-                <div className="text-2xl sm:text-3xl font-serif font-extrabold text-karobaari-maroon">
-                  {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
-                </div>
-                {isSale && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm sm:text-base text-gray-400 line-through">
-                      Rs. {course.price.toLocaleString()}
-                    </span>
-                    <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                      -{discountPercent}% OFF
-                    </span>
+            <div className="pt-5 border-t border-gray-200 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <div className="text-2xl sm:text-3xl font-serif font-extrabold text-karobaari-maroon">
+                    {currentPrice === 0 ? "FREE" : `Rs. ${(currentPrice || 0).toLocaleString()}`}
                   </div>
-                )}
+                  {isSale && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm sm:text-base text-gray-400 line-through">
+                        Rs. {course.price.toLocaleString()}
+                      </span>
+                      <span className="bg-red-100 text-red-700 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded">
+                        -{discountPercent}% OFF
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Instant Access &bull; 0 Shipping Fee</span>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+              {/* DUAL ACTION BUTTONS: Add to Cart & Buy Now */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border transition-all active:scale-95 cursor-pointer ${
+                    added
+                      ? "bg-green-600 text-white border-green-600"
+                      : "bg-white text-karobaari-maroon border-karobaari-maroon hover:bg-red-50 shadow-xs"
+                  }`}
+                >
+                  {added ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+                  <span>{added ? "Added to Cart" : "Add to Cart"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  className="w-full py-3 rounded-xl bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs sm:text-sm shadow flex items-center justify-center gap-2 border border-karobaari-gold/40 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 text-karobaari-gold fill-karobaari-gold" />
+                  <span>Buy Now &amp; Checkout</span>
+                </button>
+              </div>
+
+              {/* SECONDARY ACTIONS: Watch Video & WhatsApp */}
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                 {course.youtube_url && videoId && (
                   <button
                     type="button"
                     onClick={() => setIsPlayingVideo(!isPlayingVideo)}
-                    className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
                   >
                     <PlayCircle className="w-4 h-4" />
-                    <span>{isPlayingVideo ? "Hide Video" : "Watch Video on Site"}</span>
+                    <span>{isPlayingVideo ? "Hide Video Player" : "Watch Video on Site"}</span>
                   </button>
                 )}
                 <a
                   href={`https://wa.me/923359939702?text=${whatsappMsg}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 transition-transform active:scale-95"
                 >
                   <PhoneCall className="w-4 h-4" />
-                  <span>Enroll Instantly via WhatsApp</span>
+                  <span>Enroll via WhatsApp</span>
                 </a>
               </div>
             </div>
