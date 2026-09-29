@@ -71,15 +71,36 @@ function setLocal<T>(key: string, data: T[]) {
 
 export function slugify(text?: string): string {
   if (!text) return "";
-  return text
-    .toString()
+  const raw = text.toString().trim();
+  if (!raw) return "";
+
+  // 1. Try standard alphanumeric ASCII slug
+  const ascii = raw
     .toLowerCase()
-    .trim()
     .replace(/[\s_]+/g, "-")
     .replace(/[^\w\-]+/g, "")
     .replace(/\-\-+/g, "-")
     .replace(/^-+/, "")
     .replace(/-+$/, "");
+
+  if (ascii.length >= 2) return ascii;
+
+  // 2. Unicode-aware slug (supports Urdu, Arabic, Persian, etc. script characters)
+  try {
+    const unicodePattern = new RegExp("[^\\p{L}\\p{N}\\-]+", "gu");
+    const unicode = raw
+      .toLowerCase()
+      .replace(/[\s_]+/g, "-")
+      .replace(unicodePattern, "")
+      .replace(/\-\-+/g, "-")
+      .replace(/^-+/, "")
+      .replace(/-+$/, "");
+
+    if (unicode.length >= 2) return unicode;
+  } catch {}
+
+  // 3. Fallback: generate a safe deterministic timestamp/hash slug so it NEVER returns an empty string
+  return `item-${Date.now().toString(36)}`;
 }
 
 export function cleanPropertySlug(text?: string): string {
@@ -656,9 +677,24 @@ export async function getAdminOverview() {
 export async function adminSaveProduct(product: Partial<Product>): Promise<Product> {
   const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
   let updatedProduct: Product;
-  const derivedSlug = slugify(product.slug || product.name || `product-${Date.now()}`);
+  
+  let rawSlug = product.slug || product.name || "";
+  let derivedSlug = slugify(rawSlug);
+  if (!derivedSlug || derivedSlug.trim() === "" || derivedSlug === "-") {
+    derivedSlug = `product-${Date.now().toString(36)}`;
+  }
 
-  if (product.id && current.some((p) => p.id === product.id)) {
+  const isExisting = Boolean(product.id && current.some((p) => p.id === product.id));
+  if (!isExisting) {
+    let base = derivedSlug;
+    let counter = 1;
+    while (current.some((p) => p.slug === derivedSlug && p.id !== product.id)) {
+      counter++;
+      derivedSlug = `${base}-${counter}`;
+    }
+  }
+
+  if (isExisting) {
     updatedProduct = {
       ...current.find((p) => p.id === product.id)!,
       ...product,
@@ -748,8 +784,8 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     } catch {}
   }
 
-  const updatedList = current.some((p) => p.id === updatedProduct.id || p.slug === updatedProduct.slug)
-    ? current.map((p) => (p.id === updatedProduct.id || p.slug === updatedProduct.slug ? updatedProduct : p))
+  const updatedList = current.some((p) => p.id === updatedProduct.id)
+    ? current.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     : [updatedProduct, ...current];
   setLocal(STORAGE_KEYS.PRODUCTS, updatedList);
 
@@ -782,9 +818,24 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
 export async function adminSaveProperty(property: Partial<Property>): Promise<Property> {
   const current = getLocal<Property>(STORAGE_KEYS.PROPERTIES, []);
   let updatedProperty: Property;
-  const derivedSlug = slugify(property.slug || property.title || `property-${Date.now()}`);
 
-  if (property.id && current.some((p) => p.id === property.id)) {
+  let rawSlug = property.slug || property.title || "";
+  let derivedSlug = slugify(rawSlug);
+  if (!derivedSlug || derivedSlug.trim() === "" || derivedSlug === "-") {
+    derivedSlug = `property-${Date.now().toString(36)}`;
+  }
+
+  const isExisting = Boolean(property.id && current.some((p) => p.id === property.id));
+  if (!isExisting) {
+    let base = derivedSlug;
+    let counter = 1;
+    while (current.some((p) => p.slug === derivedSlug && p.id !== property.id)) {
+      counter++;
+      derivedSlug = `${base}-${counter}`;
+    }
+  }
+
+  if (isExisting) {
     updatedProperty = {
       ...current.find((p) => p.id === property.id)!,
       ...property,
@@ -850,8 +901,8 @@ export async function adminSaveProperty(property: Partial<Property>): Promise<Pr
     } catch {}
   }
 
-  const updatedList = current.some((p) => p.id === updatedProperty.id || p.slug === updatedProperty.slug)
-    ? current.map((p) => (p.id === updatedProperty.id || p.slug === updatedProperty.slug ? updatedProperty : p))
+  const updatedList = current.some((p) => p.id === updatedProperty.id)
+    ? current.map((p) => (p.id === updatedProperty.id ? updatedProperty : p))
     : [updatedProperty, ...current];
   setLocal(STORAGE_KEYS.PROPERTIES, updatedList);
 
@@ -879,9 +930,24 @@ export async function adminDeleteProperty(id: string): Promise<boolean> {
 export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<DigitalBook> {
   const current = getLocal<DigitalBook>(STORAGE_KEYS.BOOKS, []);
   let updatedBook: DigitalBook;
-  const derivedSlug = slugify(book.slug || book.title || `book-${Date.now()}`);
+  
+  let rawSlug = book.slug || book.title || "";
+  let derivedSlug = slugify(rawSlug);
+  if (!derivedSlug || derivedSlug.trim() === "" || derivedSlug === "-") {
+    derivedSlug = `book-${Date.now().toString(36)}`;
+  }
 
-  if (book.id && current.some((b) => b.id === book.id)) {
+  const isExisting = Boolean(book.id && current.some((b) => b.id === book.id));
+  if (!isExisting) {
+    let base = derivedSlug;
+    let counter = 1;
+    while (current.some((b) => b.slug === derivedSlug && b.id !== book.id)) {
+      counter++;
+      derivedSlug = `${base}-${counter}`;
+    }
+  }
+
+  if (isExisting) {
     updatedBook = {
       ...current.find((b) => b.id === book.id)!,
       ...book,
@@ -938,8 +1004,8 @@ export async function adminSaveDigitalBook(book: Partial<DigitalBook>): Promise<
     } catch {}
   }
 
-  const updatedList = current.some((b) => b.id === updatedBook.id || b.slug === updatedBook.slug)
-    ? current.map((b) => (b.id === updatedBook.id || b.slug === updatedBook.slug ? updatedBook : b))
+  const updatedList = current.some((b) => b.id === updatedBook.id)
+    ? current.map((b) => (b.id === updatedBook.id ? updatedBook : b))
     : [updatedBook, ...current];
   setLocal(STORAGE_KEYS.BOOKS, updatedList);
 
@@ -969,9 +1035,24 @@ export async function adminDeleteDigitalBook(id: string): Promise<boolean> {
 export async function adminSaveCourse(course: Partial<Course>): Promise<Course> {
   const current = getLocal<Course>(STORAGE_KEYS.COURSES, []);
   let updatedCourse: Course;
-  const derivedSlug = slugify(course.slug || course.title || `course-${Date.now()}`);
+  
+  let rawSlug = course.slug || course.title || "";
+  let derivedSlug = slugify(rawSlug);
+  if (!derivedSlug || derivedSlug.trim() === "" || derivedSlug === "-") {
+    derivedSlug = `course-${Date.now().toString(36)}`;
+  }
 
-  if (course.id && current.some((c) => c.id === course.id)) {
+  const isExisting = Boolean(course.id && current.some((c) => c.id === course.id));
+  if (!isExisting) {
+    let base = derivedSlug;
+    let counter = 1;
+    while (current.some((c) => c.slug === derivedSlug && c.id !== course.id)) {
+      counter++;
+      derivedSlug = `${base}-${counter}`;
+    }
+  }
+
+  if (isExisting) {
     updatedCourse = {
       ...current.find((c) => c.id === course.id)!,
       ...course,
@@ -1031,8 +1112,8 @@ export async function adminSaveCourse(course: Partial<Course>): Promise<Course> 
     } catch {}
   }
 
-  const updatedList = current.some((c) => c.id === updatedCourse.id || c.slug === updatedCourse.slug)
-    ? current.map((c) => (c.id === updatedCourse.id || c.slug === updatedCourse.slug ? updatedCourse : c))
+  const updatedList = current.some((c) => c.id === updatedCourse.id)
+    ? current.map((c) => (c.id === updatedCourse.id ? updatedCourse : c))
     : [updatedCourse, ...current];
   setLocal(STORAGE_KEYS.COURSES, updatedList);
 

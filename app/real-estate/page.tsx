@@ -6,17 +6,22 @@ import {
   Building2,
   PhoneCall,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import PropertyCard from "@/components/PropertyCard";
 import { getProperties } from "@/lib/db";
 import { Property } from "@/lib/types";
 
+const ITEMS_PER_PAGE = 6;
+
 export default function RealEstatePage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   const loadPropertiesData = () => {
-    getProperties({ limit: 24 }).then((res) => {
+    getProperties({ limit: 48 }).then((res) => {
       if (res && res.properties) {
         setProperties(res.properties);
       }
@@ -158,11 +163,80 @@ export default function RealEstatePage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {properties.map((p) => (
-              <PropertyCard key={p.id} property={p} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {properties.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map((p) => (
+                <PropertyCard key={p.id} property={p} />
+              ))}
+            </div>
+
+            {Math.ceil(properties.length / ITEMS_PER_PAGE) > 1 && (
+              <div className="mt-8 pt-5 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <span className="text-gray-500 text-[11px] sm:text-xs">
+                  Showing <span className="font-bold text-karobaari-maroon">{(page - 1) * ITEMS_PER_PAGE + 1}</span> to{" "}
+                  <span className="font-bold text-karobaari-maroon">
+                    {Math.min(page * ITEMS_PER_PAGE, properties.length)}
+                  </span>{" "}
+                  of <span className="font-bold text-karobaari-darkGray">{properties.length}</span> Properties
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => {
+                      setPage((p) => Math.max(1, p - 1));
+                      window.scrollTo({ top: 350, behavior: "smooth" });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition-colors ${
+                      page === 1
+                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
+                    }`}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                  </button>
+
+                  {Array.from({ length: Math.ceil(properties.length / ITEMS_PER_PAGE) }).map((_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => {
+                          setPage(pageNum);
+                          window.scrollTo({ top: 350, behavior: "smooth" });
+                        }}
+                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          page === pageNum
+                            ? "bg-karobaari-maroon text-white shadow-xs"
+                            : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    disabled={page === Math.ceil(properties.length / ITEMS_PER_PAGE)}
+                    onClick={() => {
+                      setPage((p) => Math.min(Math.ceil(properties.length / ITEMS_PER_PAGE), p + 1));
+                      window.scrollTo({ top: 350, behavior: "smooth" });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition-colors ${
+                      page === Math.ceil(properties.length / ITEMS_PER_PAGE)
+                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
+                    }`}
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

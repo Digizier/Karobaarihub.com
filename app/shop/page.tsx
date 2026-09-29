@@ -90,42 +90,60 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
     getCategories().then(setCategories);
   };
 
-  const loadProductsData = () => {
+  const [cache, setCache] = useState<Record<string, { products: Product[]; total: number }>>({});
+
+  const loadProductsData = async (targetPage = page) => {
     setLoading(true);
-    getProducts({
-      categorySlug: selectedCategory || undefined,
-      search: initialSearch || undefined,
-      flashSaleOnly: initialFlash || undefined,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      sort,
-      limit: 100,
-      offset: 0,
-    }).then((res) => {
+    const cacheKey = `${selectedCategory}_${initialSearch}_${initialFlash}_${minPrice}_${maxPrice}_${minRating}_${sort}_${targetPage}`;
+
+    if (cache[cacheKey]) {
+      setProducts(cache[cacheKey].products);
+      setTotal(cache[cacheKey].total);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await getProducts({
+        categorySlug: selectedCategory || undefined,
+        search: initialSearch || undefined,
+        flashSaleOnly: initialFlash || undefined,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        sort,
+        limit: ITEMS_PER_PAGE,
+        offset: (targetPage - 1) * ITEMS_PER_PAGE,
+      });
+
       let filtered = res.products;
       if (minRating > 0) {
         filtered = filtered.filter((p) => p.rating >= minRating);
       }
       setProducts(filtered);
-      setTotal(filtered.length);
+      setTotal(res.total);
+      setCache((prev) => ({
+        ...prev,
+        [cacheKey]: { products: filtered, total: res.total },
+      }));
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   useEffect(() => {
     loadCategoriesData();
-    window.addEventListener("kb_categories_updated", loadCategoriesData);
-    window.addEventListener("kb_products_updated", loadProductsData);
-    window.addEventListener("storage", () => {
-      loadCategoriesData();
-      loadProductsData();
-    });
-    return () => {
-      window.removeEventListener("kb_categories_updated", loadCategoriesData);
-      window.removeEventListener("kb_products_updated", loadProductsData);
-      window.removeEventListener("storage", () => {});
+    const handleCatUpdate = () => loadCategoriesData();
+    const handleProdUpdate = () => {
+      setCache({});
+      loadProductsData(page);
     };
-  }, [selectedCategory, initialSearch, initialFlash, minPrice, maxPrice, minRating, sort]);
+    window.addEventListener("kb_categories_updated", handleCatUpdate);
+    window.addEventListener("kb_products_updated", handleProdUpdate);
+    return () => {
+      window.removeEventListener("kb_categories_updated", handleCatUpdate);
+      window.removeEventListener("kb_products_updated", handleProdUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const current = categoryParam || (params?.category as string) || searchParams.get("category") || "";
@@ -134,7 +152,7 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
 
   useEffect(() => {
     setPage(1);
-    loadProductsData();
+    loadProductsData(1);
   }, [selectedCategory, initialSearch, initialFlash, minPrice, maxPrice, minRating, sort]);
 
   const resetFilters = () => {
@@ -326,64 +344,91 @@ function ShopContent({ categoryParam }: { categoryParam?: string }) {
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3.5">
-                  {products.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE).map((p) => (
+                  {products.map((p) => (
                     <ProductCard key={p.id} product={p} />
                   ))}
                 </div>
 
                 {/* PAGINATION CONTROLS */}
-                {Math.ceil(products.length / ITEMS_PER_PAGE) > 1 && (
+                {Math.ceil(total / ITEMS_PER_PAGE) > 1 && (
                   <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <span className="text-xs text-gray-500 font-medium">
-                      Showing {(page - 1) * ITEMS_PER_PAGE + 1} - {Math.min(page * ITEMS_PER_PAGE, products.length)} of {products.length} Products
+                      Showing {(page - 1) * ITEMS_PER_PAGE + 1} - {Math.min(page * ITEMS_PER_PAGE, total)} of {total} Products
                     </span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
                       <button
                         type="button"
                         disabled={page === 1}
                         onClick={() => {
-                          setPage((p) => Math.max(1, p - 1));
+                          const newPage = Math.max(1, page - 1);
+                          setPage(newPage);
+                          loadProductsData(newPage);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                         className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
-                          page === 1 ? "border-gray-200 text-gray-300 cursor-not-allowed" : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                          page === 1 ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50" : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
                         }`}
                       >
                         <ChevronLeft className="w-3.5 h-3.5" /> Prev
                       </button>
 
-                      {Array.from({ length: Math.ceil(products.length / ITEMS_PER_PAGE) }).map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => {
-                              setPage(pageNum);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }}
-                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                              page === pageNum
-                                ? "bg-karobaari-maroon text-white shadow-xs"
-                                : "border border-gray-200 text-gray-700 hover:bg-gray-100"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
+                      {(() => {
+                        const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+                        let pages: (number | string)[] = [];
+                        if (totalPages <= 7) {
+                          pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+                        } else if (page <= 4) {
+                          pages = [1, 2, 3, 4, 5, "...", totalPages];
+                        } else if (page >= totalPages - 3) {
+                          pages = [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                        } else {
+                          pages = [1, "...", page - 1, page, page + 1, "...", totalPages];
+                        }
+
+                        return pages.map((pNum, idx) => {
+                          if (pNum === "...") {
+                            return (
+                              <span key={`dots-${idx}`} className="w-8 h-8 flex items-center justify-center text-xs text-gray-400 select-none">
+                                ...
+                              </span>
+                            );
+                          }
+                          const pageNumber = pNum as number;
+                          return (
+                            <button
+                              key={pageNumber}
+                              type="button"
+                              onClick={() => {
+                                setPage(pageNumber);
+                                loadProductsData(pageNumber);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                page === pageNumber
+                                  ? "bg-karobaari-maroon text-white shadow-xs"
+                                  : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        });
+                      })()}
 
                       <button
                         type="button"
-                        disabled={page === Math.ceil(products.length / ITEMS_PER_PAGE)}
+                        disabled={page === Math.ceil(total / ITEMS_PER_PAGE)}
                         onClick={() => {
-                          setPage((p) => Math.min(Math.ceil(products.length / ITEMS_PER_PAGE), p + 1));
+                          const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+                          const newPage = Math.min(totalPages, page + 1);
+                          setPage(newPage);
+                          loadProductsData(newPage);
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                         className={`p-2 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors ${
-                          page === Math.ceil(products.length / ITEMS_PER_PAGE)
-                            ? "border-gray-200 text-gray-300 cursor-not-allowed"
-                            : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
+                          page === Math.ceil(total / ITEMS_PER_PAGE)
+                            ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
                         }`}
                       >
                         Next <ChevronRight className="w-3.5 h-3.5" />

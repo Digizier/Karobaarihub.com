@@ -6,6 +6,9 @@ import { CourseCard } from "@/components/BookCard";
 import { getCourses } from "@/lib/db";
 import { Course } from "@/lib/types";
 import CourseDetailClient from "./[slug]/CourseDetailClient";
+import { ChevronLeft, ChevronRight, GraduationCap } from "lucide-react";
+
+const ITEMS_PER_PAGE = 8;
 
 function CoursesContent() {
   const searchParams = useSearchParams();
@@ -13,6 +16,7 @@ function CoursesContent() {
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getCourses().then((res) => {
@@ -26,6 +30,15 @@ function CoursesContent() {
   if (slug) {
     return <CourseDetailClient slug={slug} />;
   }
+
+  const totalPages = Math.ceil(courses.length / ITEMS_PER_PAGE);
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const visibleCourses = courses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen py-6 sm:py-10 w-full overflow-hidden">
@@ -49,11 +62,72 @@ function CoursesContent() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {courses.map((c) => (
-              <CourseCard key={c.id} course={c} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {visibleCourses.map((c) => (
+                <CourseCard key={c.id} course={c} />
+              ))}
+            </div>
+
+            {/* PAGINATION CONTROLS */}
+            {totalPages > 1 && (
+              <div className="mt-8 pt-5 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <span className="text-gray-500 text-[11px] sm:text-xs">
+                  Showing <span className="font-bold text-karobaari-maroon">{startIndex + 1}</span> to{" "}
+                  <span className="font-bold text-karobaari-maroon">
+                    {Math.min(startIndex + ITEMS_PER_PAGE, courses.length)}
+                  </span>{" "}
+                  of <span className="font-bold text-karobaari-darkGray">{courses.length}</span> Video Courses
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => handlePageChange(Math.max(1, page - 1))}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition-colors ${
+                      page === 1
+                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
+                    }`}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                  </button>
+
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          page === pageNum
+                            ? "bg-karobaari-maroon text-white shadow-xs"
+                            : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    disabled={page === totalPages}
+                    onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1 transition-colors ${
+                      page === totalPages
+                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer bg-white"
+                    }`}
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
