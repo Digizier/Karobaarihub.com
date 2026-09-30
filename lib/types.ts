@@ -30,11 +30,12 @@ export interface ProductVariant {
 
 export interface ProductImage {
   id: string;
-  product_id: string;
+  product_id?: string;
   public_url: string;
   alt_text?: string;
   sort_order: number;
   is_primary: boolean;
+  size_kb?: string;
 }
 
 export interface Product {
@@ -261,6 +262,7 @@ export interface SiteSettings {
   bank_name?: string;
   bank_account_title?: string;
   bank_account_number?: string;
+  logo_url?: string;
 }
 
 export interface AdminShippingConfig {

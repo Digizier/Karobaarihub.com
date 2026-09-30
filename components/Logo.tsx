@@ -1,7 +1,10 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
+
+import { useState, useEffect } from "react";
+import { getSiteSettings } from "@/lib/db";
 
 interface LogoProps {
   variant?: "karobaari" | "prism" | "combined";
@@ -10,6 +13,22 @@ interface LogoProps {
 }
 
 export default function Logo({ variant = "karobaari", className = "", size = "md" }: LogoProps) {
+  const [logoSrc, setLogoSrc] = useState<string>("/assets/karobaari-hub-logo.jpeg");
+
+  useEffect(() => {
+    if (variant === "karobaari") {
+      getSiteSettings().then((s) => {
+        if (s.logo_url) setLogoSrc(s.logo_url);
+      });
+      const onUpdate = () => {
+        getSiteSettings().then((s) => {
+          if (s.logo_url) setLogoSrc(s.logo_url);
+        });
+      };
+      window.addEventListener("kb_settings_updated", onUpdate);
+      return () => window.removeEventListener("kb_settings_updated", onUpdate);
+    }
+  }, [variant]);
   if (variant === "prism") {
     return (
       <Link href="/real-estate" className={`flex items-center gap-2 group min-w-0 ${className}`}>
@@ -39,7 +58,7 @@ export default function Logo({ variant = "karobaari", className = "", size = "md
     <Link href="/" className={`flex items-center gap-2 group min-w-0 ${className}`}>
       <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-full border-2 border-karobaari-gold bg-karobaari-darkMaroon flex items-center justify-center shadow-md overflow-hidden flex-shrink-0">
         <Image
-          src="/assets/karobaari-hub-logo.jpeg"
+          src={logoSrc}
           alt="Karobaari Hub"
           width={44}
           height={44}

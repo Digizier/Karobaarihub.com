@@ -101,6 +101,8 @@ import {
   buildCategoryTree,
 } from "@/lib/db";
 import { initialSiteSettings } from "@/lib/mockData";
+import SingleImageUpload from "@/components/SingleImageUpload";
+import MultiImageUpload from "@/components/MultiImageUpload";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1913,6 +1915,18 @@ export default function AdminPage() {
                       placeholder="Main Stop Shahpur, Adyala Road, Rawalpindi / Islamabad"
                     />
                   </div>
+
+                  <div className="sm:col-span-2 pt-2 border-t border-gray-100">
+                    <SingleImageUpload
+                      label="Brand Logo (Auto-Compressed WebP)"
+                      sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                      value={siteSettings.logo_url || ""}
+                      onChange={(url) => setSiteSettings({ ...siteSettings, logo_url: url })}
+                      folder="brand"
+                      aspectRatio="square"
+                      maxDimension={600}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2271,115 +2285,30 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h4 className="font-bold text-sm text-gray-900 border-b pb-1">2. Product Images &amp; Multi-Photo Gallery</h4>
 
-              {/* Main Thumbnail */}
-              <div className="space-y-1.5">
-                <span className="font-semibold block">Main Cover Image *</span>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-20 h-20 rounded-xl bg-gray-100 overflow-hidden border border-gray-300 shadow-inner">
-                    <Image
-                      src={editingProduct.thumbnail_url || "/assets/cloth-stand-1.jpeg"}
-                      alt="Main"
-                      fill
-                      unoptimized
-                      className="object-cover"
-                    />
-                  </div>
-                  <label className="inline-flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer shadow">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Main Cover Image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        handleImageFilePick(e, (url) => setEditingProduct({ ...editingProduct, thumbnail_url: url }))
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
+              {/* Main Cover Photo */}
+              <SingleImageUpload
+                label="Main Cover Image (Auto-Compressed WebP) *"
+                sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                value={editingProduct.thumbnail_url || ""}
+                onChange={(url) => setEditingProduct({ ...editingProduct, thumbnail_url: url })}
+                folder="products"
+                aspectRatio="square"
+              />
 
-              {/* Multiple Gallery Images */}
-              <div className="space-y-2 pt-2 border-t border-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <span className="font-semibold block text-xs">
-                      Additional Gallery Photos ({editingProduct.images?.length || 0})
-                    </span>
-                    <span className="text-[11px] text-gray-400">
-                      Upload multiple angles, closeups, and views for the product gallery.
-                    </span>
-                  </div>
-                  <label className="inline-flex items-center gap-1.5 bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer shadow flex-shrink-0">
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Upload Multiple Images</span>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (files.length === 0) return;
-                        const newImages = [...(editingProduct.images || [])];
-                        for (const file of files) {
-                          const url = await uploadImageFile(file, "products");
-                          newImages.push({
-                            id: `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                            product_id: editingProduct.id || "",
-                            public_url: url,
-                            sort_order: newImages.length + 1,
-                            is_primary: false,
-                          });
-                        }
-                        setEditingProduct({ ...editingProduct, images: newImages });
-                      }}
-                    />
-                  </label>
-                </div>
-
-                {editingProduct.images && editingProduct.images.length > 0 ? (
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 mt-2">
-                    {editingProduct.images.map((img, idx) => (
-                      <div
-                        key={img.id || idx}
-                        className="relative group rounded-xl overflow-hidden border border-gray-300 aspect-square bg-gray-50 shadow-xs"
-                      >
-                        <Image src={img.public_url} alt="Gallery" fill unoptimized className="object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
-                          <button
-                            type="button"
-                            title="Set as Main Cover"
-                            onClick={() => setEditingProduct({ ...editingProduct, thumbnail_url: img.public_url })}
-                            className="w-full py-0.5 bg-white/90 text-gray-900 rounded text-[9px] font-bold text-center hover:bg-white"
-                          >
-                            Set Main
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete Photo"
-                            onClick={() => {
-                              const updated = editingProduct.images!.filter((_, i) => i !== idx);
-                              setEditingProduct({ ...editingProduct, images: updated });
-                            }}
-                            className="w-full py-0.5 bg-red-600 text-white rounded text-[9px] font-bold flex items-center justify-center gap-0.5 hover:bg-red-700"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" /> Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-3 text-center">
-                    <p className="text-[11px] text-gray-500">
-                      No extra gallery photos added. Click <strong>+ Upload Multiple Images</strong> above to add more pictures.
-                    </p>
-                  </div>
-                )}
+              {/* Multiple Gallery Photos with Primary Cover Selector */}
+              <div className="pt-2 border-t border-gray-100">
+                <MultiImageUpload
+                  label="Product Images (Multi-upload with WebP Auto-Compression & Primary Cover Selector)"
+                  sublabel="Automatic high-efficiency client-side WebP compression (sub-100KB per photo) stored directly on cloud storage."
+                  images={editingProduct.images || []}
+                  primaryUrl={editingProduct.thumbnail_url || ""}
+                  onChange={(images) => setEditingProduct({ ...editingProduct, images })}
+                  onSetPrimary={(url) => setEditingProduct({ ...editingProduct, thumbnail_url: url })}
+                  folder="products"
+                />
               </div>
             </div>
 
@@ -3014,24 +2943,15 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="space-y-1.5 pt-2">
-                <span className="font-bold block">Property Cover Image</span>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-28 aspect-[16/10] rounded-xl bg-gray-100 overflow-hidden border">
-                    <Image src={editingProperty.thumbnail_url || "/assets/shahpur-house.jpeg"} alt="Prop" fill unoptimized className="object-cover" />
-                  </div>
-                  <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer shadow">
-                    <span>Upload Property Photo</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) =>
-                        handleImageFilePick(e, (url) => setEditingProperty({ ...editingProperty, thumbnail_url: url }))
-                      }
-                    />
-                  </label>
-                </div>
+              <div className="pt-2">
+                <SingleImageUpload
+                  label="Property Cover Image (Auto-Compressed WebP)"
+                  sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                  value={editingProperty.thumbnail_url || ""}
+                  onChange={(url) => setEditingProperty({ ...editingProperty, thumbnail_url: url })}
+                  folder="properties"
+                  aspectRatio="video"
+                />
               </div>
             </div>
 
@@ -3106,24 +3026,15 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <span className="font-bold block">Banner Image Background</span>
-              <div className="flex items-center gap-3">
-                <div className="relative w-28 aspect-[21/9] rounded-xl bg-gray-900 overflow-hidden border">
-                  <Image src={editingBanner.image_url || "/assets/ecommerce-banner-1.jpeg"} alt="Banner" fill unoptimized className="object-cover" />
-                </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer shadow">
-                  <span>Upload Graphic</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handleImageFilePick(e, (url) => setEditingBanner({ ...editingBanner, image_url: url }))
-                    }
-                  />
-                </label>
-              </div>
+            <div>
+              <SingleImageUpload
+                label="Banner Image Background (Auto-Compressed WebP)"
+                sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                value={editingBanner.image_url || ""}
+                onChange={(url) => setEditingBanner({ ...editingBanner, image_url: url })}
+                folder="banners"
+                aspectRatio="banner"
+              />
             </div>
 
             <div className="pt-3 border-t flex justify-end gap-2">
@@ -3212,24 +3123,15 @@ export default function AdminPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <span className="font-bold block">Category Image Banner</span>
-              <div className="flex items-center gap-3">
-                <div className="relative w-14 h-14 rounded-xl bg-gray-100 overflow-hidden border">
-                  <Image src={editingCategory.image_url || "/assets/cloth-stand-1.jpeg"} alt="Cat" fill unoptimized className="object-cover" />
-                </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer">
-                  <span>Choose file</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handleImageFilePick(e, (url) => setEditingCategory({ ...editingCategory, image_url: url }))
-                    }
-                  />
-                </label>
-              </div>
+            <div>
+              <SingleImageUpload
+                label="Category Image (Auto-Compressed WebP)"
+                sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                value={editingCategory.image_url || ""}
+                onChange={(url) => setEditingCategory({ ...editingCategory, image_url: url })}
+                folder="categories"
+                aspectRatio="square"
+              />
             </div>
 
             <div className="pt-3 border-t flex justify-end gap-2">
@@ -3460,24 +3362,15 @@ export default function AdminPage() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <span className="font-bold block text-gray-700">E-Book Cover Art</span>
-              <div className="flex items-center gap-3">
-                <div className="relative w-14 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-xs">
-                  <Image src={editingBook.cover_url || "/assets/ebook-cover.jpeg"} alt="Cover" fill unoptimized className="object-cover" />
-                </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors">
-                  <span>Upload Cover Art</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handleImageFilePick(e, (url) => setEditingBook({ ...editingBook, cover_url: url }))
-                    }
-                  />
-                </label>
-              </div>
+            <div>
+              <SingleImageUpload
+                label="E-Book Cover Art (Auto-Compressed WebP)"
+                sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                value={editingBook.cover_url || ""}
+                onChange={(url) => setEditingBook({ ...editingBook, cover_url: url })}
+                folder="ebooks"
+                aspectRatio="portrait"
+              />
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
@@ -3649,24 +3542,15 @@ export default function AdminPage() {
               <p className="text-[10px] text-gray-400 mt-1">When students click &quot;Watch Video&quot; or the player, they will be redirected to this YouTube link.</p>
             </div>
 
-            <div className="space-y-1.5">
-              <span className="font-bold block text-gray-700">Course Thumbnail</span>
-              <div className="flex items-center gap-3">
-                <div className="relative w-24 aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-200 shadow-xs">
-                  <Image src={editingCourse.thumbnail_url || "/assets/course-thumb.jpeg"} alt="Thumb" fill unoptimized className="object-cover" />
-                </div>
-                <label className="bg-gray-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer hover:bg-gray-800 transition-colors">
-                  <span>Upload Thumbnail</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handleImageFilePick(e, (url) => setEditingCourse({ ...editingCourse, thumbnail_url: url }))
-                    }
-                  />
-                </label>
-              </div>
+            <div>
+              <SingleImageUpload
+                label="Course Thumbnail (Auto-Compressed WebP)"
+                sublabel="PNG, JPG, BMP auto-compressed into lightweight WebP in KB size"
+                value={editingCourse.thumbnail_url || ""}
+                onChange={(url) => setEditingCourse({ ...editingCourse, thumbnail_url: url })}
+                folder="courses"
+                aspectRatio="video"
+              />
             </div>
 
             <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">

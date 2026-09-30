@@ -1547,14 +1547,29 @@ export async function adminDeleteInquiry(inquiryId: string): Promise<boolean> {
   return true;
 }
 
-// IMAGE UPLOADER HELPER (Client File to URL / Supabase Storage)
+// IMAGE UPLOADER HELPER (Client File to URL / Cloud Storage)
 export async function uploadImageFile(file: File, folder = "products"): Promise<string> {
+  let fileToUpload: File = file;
+
+  // Auto-compress to WebP in browser if not already WebP
+  if (typeof window !== "undefined" && file.type?.startsWith("image/") && file.type !== "image/webp") {
+    try {
+      const { compressImageToWebP } = await import("@/lib/imageCompressor");
+      const compressed = await compressImageToWebP(file, { maxDimension: 1200, targetMaxSizeBytes: 100 * 1024 });
+      fileToUpload = compressed.file;
+    } catch (e) {
+      console.warn("Client WebP compression fallback to original file:", e);
+    }
+  }
+
   if (isSupabaseConfigured() && supabase) {
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-      const { data, error } = await supabase.storage.from("karobaari-assets").upload(fileName, file, {
-        cacheControl: "3600",
+      const baseName = fileToUpload.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const fileExt = fileToUpload.name.split(".").pop() || "webp";
+      const fileName = `${folder}/${Date.now()}_${baseName}_${Math.random().toString(36).substring(2, 6)}.${fileExt}`;
+      const { data, error } = await supabase.storage.from("karobaari-assets").upload(fileName, fileToUpload, {
+        cacheControl: "31536000, public, immutable",
+        contentType: fileToUpload.type || "image/webp",
         upsert: true,
       });
 
@@ -1571,9 +1586,9 @@ export async function uploadImageFile(file: File, folder = "products"): Promise<
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      resolve((e.target?.result as string) || URL.createObjectURL(file));
+      resolve((e.target?.result as string) || URL.createObjectURL(fileToUpload));
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(fileToUpload);
   });
 }
 
@@ -1605,6 +1620,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
           bank_name: settingsMap.bank_name || initialSiteSettings.bank_name,
           bank_account_title: settingsMap.bank_account_title || initialSiteSettings.bank_account_title,
           bank_account_number: settingsMap.bank_account_number || initialSiteSettings.bank_account_number,
+          logo_url: settingsMap.logo_url || initialSiteSettings.logo_url || "",
         };
         if (typeof window !== "undefined") {
           localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(merged));
@@ -1648,6 +1664,7 @@ export async function adminSaveSiteSettings(settings: SiteSettings): Promise<Sit
         { key: "bank_name", value: settings.bank_name || "" },
         { key: "bank_account_title", value: settings.bank_account_title || "" },
         { key: "bank_account_number", value: settings.bank_account_number || "" },
+        { key: "logo_url", value: settings.logo_url || "" },
       ];
       for (const entry of entries) {
         await supabase.from("site_settings").upsert(entry, { onConflict: "key" });
@@ -1657,10 +1674,10 @@ export async function adminSaveSiteSettings(settings: SiteSettings): Promise<Sit
   return settings;
 }
 
-// SUPABASE CONNECTION TEST
+// CLOUD DATABASE CONNECTION TEST
 export async function testSupabaseConnection(): Promise<{ connected: boolean; latencyMs?: number; error?: string }> {
   if (!isSupabaseConfigured() || !supabase) {
-    return { connected: false, error: "Missing Supabase Environment Credentials (using local persistence)" };
+    return { connected: false, error: "Missing Cloud Database Credentials (using local persistence)" };
   }
   try {
     const start = performance.now();
@@ -1672,6 +1689,6 @@ export async function testSupabaseConnection(): Promise<{ connected: boolean; la
     }
     return { connected: true, latencyMs };
   } catch (err: any) {
-    return { connected: false, error: err.message || "Failed to reach Supabase" };
+    return { connected: false, error: err.message || "Failed to reach Cloud Database" };
   }
 }
