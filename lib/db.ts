@@ -673,6 +673,39 @@ export async function getAdminOverview() {
   };
 }
 
+// ADMIN GET ALL PRODUCTS (Fetches complete catalog without 100-item truncation)
+export async function adminGetAllProducts(): Promise<Product[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const all: Product[] = [];
+      let from = 0;
+      const step = 1000;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, from + step - 1);
+
+        if (error || !data || data.length === 0) break;
+        all.push(...(data as Product[]));
+        if (data.length < step) break;
+        from += step;
+      }
+
+      if (all.length > 0) {
+        setLocal(STORAGE_KEYS.PRODUCTS, all);
+        return all;
+      }
+    } catch (e) {
+      console.warn("adminGetAllProducts error:", e);
+    }
+  }
+
+  return getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
+}
+
 // PRODUCT CRUD
 export async function adminSaveProduct(product: Partial<Product>): Promise<Product> {
   const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);

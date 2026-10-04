@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -39,6 +39,7 @@ import {
   MapPin,
   Save,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CornerDownRight,
   FolderTree,
@@ -61,6 +62,7 @@ import {
 import {
   getAdminOverview,
   getProducts,
+  adminGetAllProducts,
   adminSaveProduct,
   adminDeleteProduct,
   getProperties,
@@ -140,6 +142,9 @@ export default function AdminPage() {
   const [isEditingShippingConfig, setIsEditingShippingConfig] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [productPage, setProductPage] = useState(1);
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  const PRODUCTS_PER_PAGE = 100;
 
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingProperty, setEditingProperty] = useState<Partial<Property> | null>(null);
@@ -237,7 +242,7 @@ export default function AdminPage() {
     try {
       const [ov, prods, props, bks, crs, ords, inqs, cats, vchs, bnrs, shp, sett] = await Promise.all([
         getAdminOverview().catch(() => null),
-        getProducts({ limit: 100 }).catch(() => ({ products: [], total: 0 })),
+        adminGetAllProducts().catch(() => []),
         getProperties({ limit: 100 }).catch(() => ({ properties: [], total: 0 })),
         getDigitalBooks().catch(() => []),
         getCourses().catch(() => []),
@@ -250,7 +255,7 @@ export default function AdminPage() {
         getSiteSettings().catch(() => initialSiteSettings),
       ]);
       setOverview(ov);
-      setProducts(prods?.products || []);
+      setProducts(prods || []);
       setProperties(props?.properties || []);
       setBooks(bks || []);
       setCourses(crs || []);
@@ -267,6 +272,42 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+
+  // Filtered Products with Comprehensive Search & Category Filtering
+  const filteredProducts = useMemo(() => {
+    let list = products || [];
+
+    if (productCategoryFilter && productCategoryFilter !== "all") {
+      list = list.filter(
+        (p) =>
+          (p.category_slug || "").toLowerCase() === productCategoryFilter.toLowerCase() ||
+          (p.category_name || "").toLowerCase() === productCategoryFilter.toLowerCase()
+      );
+    }
+
+    const q = (searchQuery || "").trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter((p) => {
+      const nameMatch = (p?.name || "").toLowerCase().includes(q);
+      const skuMatch = (p?.sku || "").toLowerCase().includes(q);
+      const variantSkuMatch = (p?.variants || []).some((v) => (v?.sku || "").toLowerCase().includes(q));
+      const catMatch =
+        (p?.category_name || "").toLowerCase().includes(q) ||
+        (p?.category_slug || "").toLowerCase().includes(q);
+      const slugMatch = (p?.slug || "").toLowerCase().includes(q);
+      const locationMatch = (p?.location_tag || "").toLowerCase().includes(q);
+      const brandMatch = (p?.brand_name || "").toLowerCase().includes(q);
+
+      return nameMatch || skuMatch || variantSkuMatch || catMatch || slugMatch || locationMatch || brandMatch;
+    });
+  }, [products, searchQuery, productCategoryFilter]);
+
+  const totalProductPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE) || 1;
+  const currentProductPage = Math.min(Math.max(1, productPage), totalProductPages);
+  const productStartIndex = (currentProductPage - 1) * PRODUCTS_PER_PAGE;
+  const productEndIndex = Math.min(productStartIndex + PRODUCTS_PER_PAGE, filteredProducts.length);
+  const paginatedProducts = filteredProducts.slice(productStartIndex, productEndIndex);
 
   const handleSaveStoreSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -619,17 +660,54 @@ export default function AdminPage() {
           {/* TAB 2: PRODUCTS */}
           {activeTab === "products" && (
             <div className="space-y-4">
+              {/* Header Filter & Action Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-xs">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search products by title, SKU, category..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl pl-9 pr-4 py-2 text-xs text-gray-800"
-                  />
+                <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-2xl">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search products by title, SKU, category, slug..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setProductPage(1);
+                      }}
+                      className="w-full bg-gray-50 border border-gray-300 rounded-xl pl-9 pr-8 py-2 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setProductPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Filter Dropdown */}
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => {
+                      setProductCategoryFilter(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-800 font-semibold focus:outline-none focus:ring-1 focus:ring-karobaari-maroon"
+                  >
+                    <option value="all">All Categories ({products.length})</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.slug}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
                 <button
                   onClick={() =>
                     setEditingProduct({
@@ -654,10 +732,61 @@ export default function AdminPage() {
                       is_active: true,
                     })
                   }
-                  className="bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center gap-1.5"
+                  className="bg-karobaari-maroon hover:bg-karobaari-darkMaroon text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center justify-center gap-1.5 shrink-0"
                 >
                   <Plus className="w-4 h-4" /> Add New Product
                 </button>
+              </div>
+
+              {/* Status & Counter Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900">
+                    {filteredProducts.length === products.length
+                      ? `Total Products: ${products.length}`
+                      : `Filtered Results: ${filteredProducts.length} of ${products.length}`}
+                  </span>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-gray-500">
+                    Showing {filteredProducts.length > 0 ? productStartIndex + 1 : 0}–{productEndIndex} on Page {currentProductPage} of {totalProductPages}
+                  </span>
+                  {(searchQuery || productCategoryFilter !== "all") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setProductCategoryFilter("all");
+                        setProductPage(1);
+                      }}
+                      className="text-karobaari-maroon font-bold hover:underline text-[11px] ml-1"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+
+                {totalProductPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-400 text-[11px] mr-1 hidden sm:inline">Page:</span>
+                    {Array.from({ length: totalProductPages }, (_, i) => i + 1).map((pg) => (
+                      <button
+                        key={pg}
+                        type="button"
+                        onClick={() => {
+                          setProductPage(pg);
+                          window.scrollTo({ top: 180, behavior: "smooth" });
+                        }}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                          pg === currentProductPage
+                            ? "bg-karobaari-maroon text-white shadow-xs"
+                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pg}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Products Table */}
@@ -675,20 +804,25 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {(products || [])
-                        .filter((p) => (p?.name || "").toLowerCase().includes((searchQuery || "").toLowerCase()))
-                        .map((p) => (
-                          <tr key={p.id} className="hover:bg-gray-50">
+                      {paginatedProducts.length > 0 ? (
+                        paginatedProducts.map((p) => (
+                          <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                             <td className="py-3 px-4 flex items-center gap-3">
                               <div className="relative w-10 h-10 rounded-lg bg-gray-100 overflow-hidden border shrink-0">
-                                <Image src={p.thumbnail_url || "/assets/cloth-stand-1.jpeg"} alt={p.name || "Product"} fill unoptimized className="object-cover" />
+                                <Image
+                                  src={p.thumbnail_url || "/assets/cloth-stand-1.jpeg"}
+                                  alt={p.name || "Product"}
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
                               </div>
                               <div className="min-w-0">
                                 <span className="font-bold text-gray-900 line-clamp-1 block">{p.name}</span>
                                 <span className="text-[10px] text-gray-400 font-mono">/product/{p.slug}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-600">{p.category_name}</td>
+                            <td className="py-3 px-4 text-gray-600 font-medium">{p.category_name}</td>
                             <td className="py-3 px-4">
                               {p.sale_price && p.sale_price < p.price ? (
                                 <div>
@@ -719,6 +853,8 @@ export default function AdminPage() {
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
+                                  type="button"
+                                  title="Edit Product"
                                   onClick={() =>
                                     setEditingProduct({
                                       ...p,
@@ -728,24 +864,112 @@ export default function AdminPage() {
                                       video_url: p.video_url || "",
                                     })
                                   }
-                                  className="p-1 hover:bg-gray-100 rounded text-gray-600"
+                                  className="p-1 hover:bg-gray-100 rounded text-gray-600 transition-colors"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
+                                  type="button"
+                                  title="Delete Product"
                                   onClick={() => setDeleteModal({ isOpen: true, type: "product", id: p.id, title: p.name })}
-                                  className="p-1 hover:bg-red-50 rounded text-red-600"
+                                  className="p-1 hover:bg-red-50 rounded text-red-600 transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-gray-400">
+                            <Package className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p className="font-bold text-gray-700 text-sm">No products found</p>
+                            <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
+                              {searchQuery
+                                ? `No product found matching "${searchQuery}". Try searching with a different keyword or SKU.`
+                                : "No products available under the selected filter."}
+                            </p>
+                            {(searchQuery || productCategoryFilter !== "all") && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setProductCategoryFilter("all");
+                                  setProductPage(1);
+                                }}
+                                className="mt-3 px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+                              >
+                                Clear All Filters
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
+
+              {/* Bottom Pagination Controls */}
+              {totalProductPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-xs text-xs">
+                  <div className="text-gray-500 text-center sm:text-left">
+                    Showing <span className="font-bold text-gray-900">{productStartIndex + 1}</span> to{" "}
+                    <span className="font-bold text-gray-900">{productEndIndex}</span> of{" "}
+                    <span className="font-bold text-gray-900">{filteredProducts.length}</span> products{" "}
+                    <span className="text-gray-400">(100 products per page)</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={currentProductPage <= 1}
+                      onClick={() => {
+                        setProductPage((p) => Math.max(1, p - 1));
+                        window.scrollTo({ top: 180, behavior: "smooth" });
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white font-semibold flex items-center gap-1 transition-all"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalProductPages }, (_, i) => i + 1).map((pg) => (
+                        <button
+                          key={pg}
+                          type="button"
+                          onClick={() => {
+                            setProductPage(pg);
+                            window.scrollTo({ top: 180, behavior: "smooth" });
+                          }}
+                          className={`min-w-8 h-8 px-2 rounded-xl text-xs font-bold transition-all ${
+                            pg === currentProductPage
+                              ? "bg-karobaari-maroon text-white shadow-xs"
+                              : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={currentProductPage >= totalProductPages}
+                      onClick={() => {
+                        setProductPage((p) => Math.min(totalProductPages, p + 1));
+                        window.scrollTo({ top: 180, behavior: "smooth" });
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white font-semibold flex items-center gap-1 transition-all"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
