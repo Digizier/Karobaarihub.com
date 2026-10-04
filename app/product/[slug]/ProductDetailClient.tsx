@@ -18,10 +18,11 @@ import {
   Plus,
   PlayCircle,
   X,
+  Copy,
 } from "lucide-react";
 import { Product, ProductVariant } from "@/lib/types";
 import { addToCart } from "@/lib/cart";
-import { getProductBySlug, getProducts } from "@/lib/db";
+import { getProductBySlug, getProducts, getProductDisplayCode } from "@/lib/db";
 import ProductCard from "@/components/ProductCard";
 
 function getYouTubeVideoId(url?: string | null): string | null {
@@ -49,6 +50,7 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
   const [selectedGeneral, setSelectedGeneral] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [showVideo, setShowVideo] = useState(false);
 
@@ -209,6 +211,13 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
     ...(product.images?.map((i: any) => (typeof i === "string" ? i : i?.public_url || i?.url || i?.image_url)) || []),
   ].filter(Boolean) as string[];
   const uniqueGalleryImages = Array.from(new Set(allGalleryImages));
+
+  // Active product code / SKU (from variant or base product)
+  const activeProductCode =
+    selectedColor?.sku ||
+    selectedSize?.sku ||
+    selectedGeneral?.sku ||
+    getProductDisplayCode(product);
 
   return (
     <div className="bg-gray-50 min-h-screen py-3 sm:py-6 w-full overflow-hidden">
@@ -466,6 +475,42 @@ export default function ProductDetailClient({ product: initialProduct, slug: pro
                   </div>
                 );
               })()}
+
+              {/* Product Code / SKU Display (Mid-section between Select Color/Options and Quantity) */}
+              {activeProductCode && (
+                <div className="my-3 py-2 px-3 bg-gray-50/90 border border-gray-200/90 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-700">Product Code:</span>
+                    <span className="text-xs font-mono font-bold text-karobaari-maroon bg-white px-2 py-0.5 rounded-md border border-red-200 tracking-wider shadow-2xs">
+                      {activeProductCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== "undefined" && navigator.clipboard) {
+                        navigator.clipboard.writeText(activeProductCode);
+                        setCopiedCode(true);
+                        setTimeout(() => setCopiedCode(false), 2000);
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-gray-500 hover:text-karobaari-maroon flex items-center gap-1 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 cursor-pointer"
+                    title="Copy Product Code"
+                  >
+                    {copiedCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-green-600" />
+                        <span className="text-green-600 font-bold text-[10px]">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span className="text-[10px]">Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Quantity Picker */}
               <div className="my-3">

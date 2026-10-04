@@ -65,6 +65,8 @@ import {
   adminGetAllProducts,
   adminSaveProduct,
   adminDeleteProduct,
+  extractProductCode,
+  getProductDisplayCode,
   getProperties,
   adminSaveProperty,
   adminDeleteProperty,
@@ -291,6 +293,7 @@ export default function AdminPage() {
     return list.filter((p) => {
       const nameMatch = (p?.name || "").toLowerCase().includes(q);
       const skuMatch = (p?.sku || "").toLowerCase().includes(q);
+      const codeMatch = (getProductDisplayCode(p) || "").toLowerCase().includes(q);
       const variantSkuMatch = (p?.variants || []).some((v) => (v?.sku || "").toLowerCase().includes(q));
       const catMatch =
         (p?.category_name || "").toLowerCase().includes(q) ||
@@ -299,7 +302,7 @@ export default function AdminPage() {
       const locationMatch = (p?.location_tag || "").toLowerCase().includes(q);
       const brandMatch = (p?.brand_name || "").toLowerCase().includes(q);
 
-      return nameMatch || skuMatch || variantSkuMatch || catMatch || slugMatch || locationMatch || brandMatch;
+      return nameMatch || skuMatch || codeMatch || variantSkuMatch || catMatch || slugMatch || locationMatch || brandMatch;
     });
   }, [products, searchQuery, productCategoryFilter]);
 
@@ -715,6 +718,7 @@ export default function AdminPage() {
                       slug: "",
                       price: 1000,
                       sale_price: undefined,
+                      sku: "",
                       stock: 25,
                       brand_name: "Karobaari Hub",
                       category_name: categories[0]?.name || "Electronic Accessories",
@@ -819,7 +823,14 @@ export default function AdminPage() {
                               </div>
                               <div className="min-w-0">
                                 <span className="font-bold text-gray-900 line-clamp-1 block">{p.name}</span>
-                                <span className="text-[10px] text-gray-400 font-mono">/product/{p.slug}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {getProductDisplayCode(p) && (
+                                    <span className="inline-flex items-center text-[10px] font-mono font-bold text-karobaari-maroon bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shrink-0">
+                                      {getProductDisplayCode(p)}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-gray-400 font-mono truncate">/product/{p.slug}</span>
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 text-gray-600 font-medium">{p.category_name}</td>
@@ -858,6 +869,7 @@ export default function AdminPage() {
                                   onClick={() =>
                                     setEditingProduct({
                                       ...p,
+                                      sku: p.sku || extractProductCode(p.name) || "",
                                       images: Array.isArray(p.images) ? p.images : [],
                                       variants: Array.isArray(p.variants) ? p.variants : [],
                                       specifications: (p.specifications && typeof p.specifications === "object") ? p.specifications : {},
@@ -2426,6 +2438,19 @@ export default function AdminPage() {
                     onChange={(e) => setEditingProduct({ ...editingProduct, brand_name: e.target.value })}
                     className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5"
                     placeholder="e.g. Karobaari Hub"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">
+                    Product Code / SKU <span className="text-gray-400 font-normal">(e.g. Code M 154)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editingProduct.sku || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-2.5 font-mono text-karobaari-maroon font-bold text-xs"
+                    placeholder="e.g. Code M 154 or KB-101"
                   />
                 </div>
 

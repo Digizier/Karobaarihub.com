@@ -706,6 +706,21 @@ export async function adminGetAllProducts(): Promise<Product[]> {
   return getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
 }
 
+// PRODUCT CODE / SKU EXTRACTOR HELPERS
+export function extractProductCode(name?: string | null): string | null {
+  if (!name) return null;
+  const m = name.match(/(?:[\/\-,\s]\s*|\b)((?:Code|SKU)\s*[-#:]?\s*[A-Za-z0-9\s]+)$/i);
+  if (m && m[1]) return m[1].trim();
+  return null;
+}
+
+export function getProductDisplayCode(product?: Partial<Product> | null): string | null {
+  if (!product) return null;
+  if (product.sku && product.sku.trim()) return product.sku.trim();
+  if (product.name) return extractProductCode(product.name);
+  return null;
+}
+
 // PRODUCT CRUD
 export async function adminSaveProduct(product: Partial<Product>): Promise<Product> {
   const current = getLocal<Product>(STORAGE_KEYS.PRODUCTS, []);
@@ -760,6 +775,11 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
     } as Product;
   }
 
+  const resolvedSku = product.sku !== undefined
+    ? (product.sku?.trim() || null)
+    : (extractProductCode(updatedProduct.name) || null);
+  updatedProduct.sku = resolvedSku || undefined;
+
   // Clean variants before saving
   const cleanedVariants = (updatedProduct.variants || []).map((v) => {
     const vPrice = Number(v.price) || updatedProduct.price || 0;
@@ -785,6 +805,7 @@ export async function adminSaveProduct(product: Partial<Product>): Promise<Produ
         short_description: updatedProduct.short_description,
         price: updatedProduct.price,
         sale_price: updatedProduct.sale_price,
+        sku: resolvedSku,
         stock: updatedProduct.stock,
         rating: updatedProduct.rating,
         review_count: updatedProduct.review_count,
@@ -836,7 +857,11 @@ export async function adminDeleteProduct(id: string): Promise<boolean> {
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from("products").delete().eq("id", id);
+      if (isValidUUID(id)) {
+        await supabase.from("products").delete().eq("id", id);
+      } else {
+        await supabase.from("products").delete().eq("slug", id);
+      }
     } catch {}
   }
 
